@@ -885,3 +885,52 @@ I now have:
 Remaining gaps:
 - add additional pipelines to validate framework scalability
 - consider configuration-driven pipeline definitions (future step)
+
+## 2026-04-27 Week 7 – Day 1 – First Spark Declarative Pipeline (SDP)
+
+### What I observed
+I successfully implemented and ran my first Spark Declarative Pipeline using serverless compute.
+
+- Pipeline defined using `@dlt.table` and `@dlt.expect`
+- Deployed via Databricks Asset Bundles
+- Executed through Databricks pipeline UI (not jobs)
+
+I initially got an error requiring a catalog when using serverless, which I resolved by explicitly defining catalog and schema in `databricks.yml`.
+
+The pipeline created:
+- `customers_bronze`
+- `customers_silver`
+
+Validation behavior is handled automatically by expectations.
+
+### What I learned
+Databricks-native pipelines enforce a different model compared to my v2 framework:
+
+- Data must be written to a governed catalog and schema
+- Orchestration is handled by the platform
+- Validation is declarative (`@dlt.expect`) instead of imperative code
+- Execution is pipeline-based, not job-based
+
+I also learned that:
+- Serverless pipelines require explicit data governance setup
+- Deployment via CLI is sufficient for development before adding CI/CD
+
+### Practical conclusion
+For SDP pipelines:
+- define data transformations declaratively
+- use expectations instead of custom validation logic
+- rely on Databricks for orchestration and monitoring
+- explicitly configure catalog and schema
+
+Avoid recreating functionality already provided by the platform.
+
+### Current position
+I now have:
+- a working SDP pipeline in a proper Databricks workspace
+- serverless execution configured correctly
+- first comparison point against my v2 custom framework
+
+Remaining gaps:
+- understand expectation behavior in detail (fail vs drop vs track)
+- compare SDP validation with my v2 rejected-row approach
+- decide how much of my custom framework should be replaced
