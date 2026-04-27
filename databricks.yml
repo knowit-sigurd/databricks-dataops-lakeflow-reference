@@ -11,7 +11,8 @@ resources:
   pipelines:
     customer_pipeline:
       name: "${bundle.target}_customer_pipeline"
-      target: "${bundle.target}"
+      catalog: dataops_lab
+      schema: sdp
       libraries:
         - file:
             path: ./pipelines/customer_pipeline.py
