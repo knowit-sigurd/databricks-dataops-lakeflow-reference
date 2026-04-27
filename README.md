@@ -35,7 +35,8 @@ This project follows a **Databricks-native approach**:
 
 ## Execution model
 
+This project follows a Databricks-native promotion model:
+
 ```text
-feature branch → dev
-main → test
-tag → prod
+PR → test (validation)
+main → prod
