@@ -1,0 +1,116 @@
+name: Deploy to Databricks
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deployment target
+        required: true
+        default: dev
+        type: choice
+        options: [dev, test]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Ensure clean working state
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Working directory is not clean"
+            exit 1
+          fi
+
+      - name: Validate tag format
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          TAG=${{ github.ref_name }}
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: $TAG"
+            exit 1
+          fi
+
+      - name: Resolve target
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "target=prod" >> $GITHUB_OUTPUT
+          else
+            echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enforce promotion rules
+        run: |
+          TARGET="${{ steps.resolve.outputs.target }}"
+
+          if [ "$TARGET" == "test" ]; then
+            if [ "${{ github.ref_name }}" != "main" ]; then
+              echo "Error: TEST deployments must come from main branch"
+              exit 1
+            fi
+          fi
+
+      - name: Print deployment context
+        run: |
+          echo "Deploying target: ${{ steps.resolve.outputs.target }}"
+          echo "Git ref: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Resolve pipeline version
+        id: version
+        run: |
+          TARGET=${{ steps.resolve.outputs.target }}
+          if [ "$TARGET" == "prod" ]; then
+            if [ "${{ github.event_name }}" == "push" ]; then
+              TAG="${{ github.ref_name }}"
+            else
+              TAG=$(git tag --points-at HEAD | head -1)
+            fi
+            if [ -z "$TAG" ]; then
+              echo "Error: no git tag found on current commit. Tag the commit or pass pipeline_version manually." >&2
+              exit 1
+            fi
+            echo "var_args=--var=pipeline_version=$TAG" >> $GITHUB_OUTPUT
+          else
+            echo "var_args=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate bundle
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks bundle validate -t ${{ steps.resolve.outputs.target }} ${{ steps.version.outputs.var_args }}
+
+      - name: Deploy bundle
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks bundle deploy -t ${{ steps.resolve.outputs.target }} ${{ steps.version.outputs.var_args }} --force-lock

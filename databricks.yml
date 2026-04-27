@@ -1,0 +1,10 @@
+bundle:
+  name: dataops-lab-sdp
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      host: https://dbc-639f4875-165d.cloud.databricks.com
+
+resources: {}
