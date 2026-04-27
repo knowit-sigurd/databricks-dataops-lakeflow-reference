@@ -7,4 +7,12 @@ targets:
     workspace:
       host: https://dbc-639f4875-165d.cloud.databricks.com
 
-resources: {}
+resources:
+  pipelines:
+    customer_pipeline:
+      name: "${bundle.target}_customer_pipeline"
+      target: "${bundle.target}"
+      libraries:
+        - file:
+            path: ./pipelines/customer_pipeline.py
+      serverless: true
