@@ -25,8 +25,8 @@ def customers_bronze():
     name="customers_silver",
     comment="Validated customers"
 )
-@dlt.expect_or_fail("valid_customer_id", "customer_id IS NOT NULL")
-@dlt.expect_or_fail("valid_customer_name", "customer_name IS NOT NULL")
+@dlt.expect_or_drop("valid_customer_id", "customer_id IS NOT NULL")
+@dlt.expect_or_drop("valid_customer_name", "customer_name IS NOT NULL")
 def customers_silver():
     df = dlt.read("customers_bronze")
 

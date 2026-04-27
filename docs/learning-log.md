@@ -934,3 +934,48 @@ Remaining gaps:
 - understand expectation behavior in detail (fail vs drop vs track)
 - compare SDP validation with my v2 rejected-row approach
 - decide how much of my custom framework should be replaced
+
+## Week 7 – Day 2 – Validation behavior in SDP
+
+### What I observed
+I tested different expectation behaviors in SDP:
+
+- `@dlt.expect` → tracks invalid rows but does not remove or fail
+- `@dlt.expect_or_drop` → filters out invalid rows and continues
+- `@dlt.expect_or_fail` → fails the pipeline on invalid data
+
+The pipeline UI provides visibility into:
+- expectation metrics
+- number of valid vs invalid rows
+- failure reasons
+
+Invalid rows are not persisted automatically in a separate table.
+
+### What I learned
+SDP provides built-in data quality handling that overlaps with my v2 validation design.
+
+Compared to v2:
+- strict mode ≈ `expect_or_fail`
+- lenient mode ≈ `expect_or_drop`
+- expectation tracking replaces parts of the audit logic
+
+However, SDP does not provide a rejected table by default, only metrics and logs.
+
+### Practical conclusion
+For SDP pipelines:
+- use `@dlt.expect_or_drop` as the default pattern
+- use `@dlt.expect_or_fail` for strict validation when needed
+- rely on pipeline UI and metrics instead of custom audit tables
+
+Avoid recreating rejected-row handling unless there is a clear business requirement.
+
+### Current position
+I now have:
+- a clear understanding of SDP expectation behavior
+- a direct comparison between v2 validation and SDP validation
+- a working validation model using platform-native features
+
+Remaining gaps:
+- understand how to persist rejected rows if needed
+- evaluate how SDP validation integrates with monitoring and lineage
+- decide when custom validation logic is still required
