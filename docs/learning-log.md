@@ -979,3 +979,48 @@ Remaining gaps:
 - understand how to persist rejected rows if needed
 - evaluate how SDP validation integrates with monitoring and lineage
 - decide when custom validation logic is still required
+
+## 2026-04-28 Week 7 – Day 3 – Observability and rejected data in SDP
+
+### What I observed
+Databricks SDP provides strong built-in observability:
+
+- pipeline execution tracking
+- data quality metrics through expectations
+- lineage and dependency visualization
+- execution logs and failure information
+
+However, SDP does not persist rejected rows by default, only aggregated metrics.
+
+### What I learned
+SDP replaces much of my custom observability from the v2 framework, including:
+- run tracking
+- validation metrics
+- failure visibility
+
+But it does not provide row-level visibility of invalid data.
+
+I realized that rejected rows serve a different purpose than observability:
+- they provide business-level traceability
+- they support debugging and data correction
+
+### Practical conclusion
+The best approach is a hybrid model:
+
+- use SDP expectations as the primary validation mechanism
+- optionally persist rejected rows as a separate table when needed
+
+This allows me to:
+- leverage platform-native observability
+- retain useful business-level visibility from my v2 design
+
+### Current position
+I now have:
+- a clear understanding of SDP observability capabilities
+- a comparison with my v2 audit model
+- a decision to rely on SDP for monitoring and extend it selectively
+
+Remaining gaps:
+- implement rejected row handling as an SDP extension
+- evaluate how this integrates with multiple pipelines
+- define when rejected tables are required vs optional
