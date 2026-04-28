@@ -11,12 +11,12 @@
     "source=${localEnv:HOME}/.databricks,target=/home/app/.databricks,type=bind"
   ],
   "containerEnv": {
-    "DATABRICKS_CONFIG_PROFILE": "",
-    "DATABRICKS_WAREHOUSE_ID": "",
-    "PYTHONPATH": "/workspace/databricks-dev-container/src",
-    "SPARK_CONF_DIR": "/workspace/databricks-dev-container/.devcontainer/spark-conf"
+    "DATABRICKS_CONFIG_PROFILE": "sigurd.lislegaard@knowit.no",
+    "DATABRICKS_WAREHOUSE_ID": "0bd7cc78c0abd6d9",
+    "PYTHONPATH": "/workspace/databricks-dev-container/databricks-dev-container/src",
+    "SPARK_CONF_DIR": "/workspace/databricks-dev-container/databricks-dev-container/.devcontainer/spark-conf"
   },
-  "postStartCommand": "uv sync && bash .devcontainer/scripts/check-databricks-config.sh",
+  "postStartCommand": "(cd databricks-dev-container && uv sync) && (grep -qF '.venv/bin/activate' ~/.bashrc || echo 'source /workspace/databricks-dev-container/databricks-dev-container/.venv/bin/activate' >> ~/.bashrc) && bash .devcontainer/scripts/check-databricks-config.sh",
   "customizations": {
     "vscode": {
       "extensions": [

@@ -40,3 +40,61 @@ This project follows a Databricks-native promotion model:
 ```text
 PR → test (validation)
 main → prod
+
+---
+
+## Architecture decision
+
+| Area                   | v2   | SDP        |
+| ---------------------- | ---- | ---------- |
+| Who controls execution | You  | Databricks |
+| Complexity             | High | Low        |
+| Flexibility            | High | Medium     |
+
+
+| Area             | v2          | SDP                 |
+| ---------------- | ----------- | ------------------- |
+| Validation logic | custom code | expectations        |
+| Rejected rows    | ✔           | ❌ (needs extension) |
+| Observability    | SQL-based   | UI-based            |
+
+
+| Area        | v2      | SDP |
+| ----------- | ------- | --- |
+| Audit table | ✔       | ❌   |
+| UI          | ❌       | ✔   |
+| Lineage     | limited | ✔   |
+
+
+| Area          | v2 | SDP         |
+| ------------- | -- | ----------- |
+| Wheel support | ✔  | not primary |
+| DAB usage     | ✔  | ✔           |
+| Serverless    | ❌  | ✔           |
+
+
+| Area              | v2       | SDP                   |
+| ----------------- | -------- | --------------------- |
+| Multi-pipeline    | registry | independent pipelines |
+| Complexity growth | high     | controlled            |
+| Team workflow     | harder   | easier                |
+
+
+If I had to build a new client solution today,
+which approach would I choose?
+- It depends on the use. Propably SDP approach as primary architecture
+
+This project evaluated two approaches:
+
+- custom DataOps framework (v2)
+- Databricks-native pipelines (SDP)
+
+Decision:
+
+SDP is the preferred approach for production systems due to:
+- reduced complexity
+- built-in observability
+- serverless execution
+- better alignment with platform capabilities
+
+Custom frameworks should only be used when platform features are insufficient.

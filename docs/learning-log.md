@@ -1066,3 +1066,156 @@ Remaining gaps:
 - learning how to coordinate pipelines in larger solutions
 - deciding when custom orchestration is still required
 
+## Week 7 – Day 5 – PR-based pipelines and platform limitations
+
+### What I observed
+I attempted to implement branch-based pipeline naming to create isolated pipelines per feature branch.
+
+However, Databricks Asset Bundles do not support string transformations (such as replacing `/` in branch names) within variable substitution.
+
+This caused deployment errors, and I reverted to using:
+
+- `${bundle.target}` for pipeline naming
+
+Pipelines now remain environment-based (dev/test/prod).
+
+### What I learned
+The idea of PR-based isolated pipelines is valid, but not directly supported through simple bundle variable substitution.
+
+DAB variable handling is intentionally limited and does not support dynamic string manipulation.
+
+I also learned that:
+- platform-native tooling defines constraints that influence architecture decisions
+- not all CI/CD patterns can be implemented directly in `databricks.yml`
+- some logic (such as sanitizing branch names) must be handled outside the bundle, e.g. in GitHub Actions
+
+### Practical conclusion
+For now:
+- keep environment-based pipeline naming (`dev_customer_pipeline`, etc.)
+- avoid overengineering branch-based isolation in `databricks.yml`
+
+For future implementation:
+- PR-based pipelines should be implemented via CI/CD (passing sanitized variables)
+- naming logic should be handled outside Databricks bundles
+
+### Current position
+I now have:
+- multiple independent SDP pipelines
+- environment-based deployment working correctly
+- understanding of limitations in bundle variable substitution
+
+Remaining gaps:
+- implement PR-based pipeline isolation via CI/CD variables
+- define cleanup strategy for temporary pipelines
+- refine team-scale workflow patterns
+
+
+## Week 8 – Day 1 – Production hardening and architecture decision
+
+### What I observed
+I compared my v2 custom DataOps framework with the SDP (Databricks-native) approach across key areas:
+
+- orchestration
+- validation
+- observability
+- deployment
+- scalability
+
+The SDP approach provides:
+- built-in orchestration
+- serverless execution
+- native validation through expectations
+- strong UI-based observability and lineage
+
+My v2 framework provides:
+- full control over execution and validation
+- SQL-based observability
+- rejected-row handling
+
+### What I learned
+The two approaches represent different architectural philosophies:
+
+- v2 = custom-built, flexible, but complex
+- SDP = platform-native, simpler, but more opinionated
+
+I learned that:
+- many components I built in v2 are already handled by Databricks in SDP
+- platform-native solutions reduce complexity and operational overhead
+- custom frameworks are only justified when platform capabilities are insufficient
+
+### Practical conclusion
+For new projects, SDP should be the default approach.
+
+Use SDP for:
+- orchestration
+- validation
+- observability
+- deployment
+
+Extend SDP only when needed, for example:
+- persisting rejected rows for business use cases
+
+Keep the v2 framework as:
+- a learning reference
+- a fallback for non-Databricks environments
+- a source of ideas for extensions
+
+### Current position
+I now have:
+- a working SDP pipeline implementation
+- a complete custom DataOps framework (v2) for comparison
+- a clear architectural decision for future projects
+
+Decision:
+- primary architecture → SDP
+- extensions → rejected rows (optional)
+- fallback → v2 framework
+
+Remaining gaps:
+- optimize developer workflow (local development)
+- refine team-scale workflow patterns
+- explore local SDP execution using devcontainer
+
+## Week 8 – Day 2 – Local development with devcontainer
+
+### What I observed
+I set up a VS Code devcontainer for local Spark development.
+
+- Spark can now run locally
+- transformation logic can be tested without deploying to Databricks
+- development loop is significantly faster
+
+However, full SDP pipelines cannot be executed locally.
+
+### What I learned
+Local development and platform execution are separate concerns:
+
+- local environment is used for fast iteration and testing
+- Databricks is used for pipeline execution and observability
+
+I also learned that:
+- not all platform features can be replicated locally
+- it is important to separate transformation logic from pipeline definitions
+
+### Practical conclusion
+Use local development for:
+- testing transformations
+- validating logic
+- fast iteration
+
+Use Databricks for:
+- running pipelines
+- validating expectations
+- monitoring execution
+
+This creates a balanced development workflow.
+
+### Current position
+I now have:
+- local Spark development environment
+- faster iteration loop
+- better separation between development and execution
+
+Remaining gaps:
+- integrate local development into CI/CD
+- refine testing strategy for SDP pipelines
