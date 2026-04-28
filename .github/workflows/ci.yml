@@ -28,4 +28,5 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest || [ $? -eq 5 ]
+          uv run pytest
+          
