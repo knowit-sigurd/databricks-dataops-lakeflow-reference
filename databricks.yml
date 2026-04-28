@@ -10,7 +10,7 @@ targets:
 resources:
   pipelines:
     customer_pipeline:
-      name: "${bundle.target}_customer_pipeline"
+      name: "${bundle.target}_${bundle.git.branch | replace('/', '_')}_customer_pipeline"
       catalog: dataops_lab
       schema: sdp
       libraries:
@@ -18,7 +18,7 @@ resources:
             path: ./pipelines/customer_pipeline.py
       serverless: true
     orders_pipeline:
-      name: "${bundle.target}_orders_pipeline"
+      name: "${bundle.target}_${bundle.git.branch | replace('/', '_')}_orders_pipeline"
       catalog: dataops_lab
       schema: sdp
       libraries:
