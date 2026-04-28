@@ -22,14 +22,16 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
-      - name: Set target
+      - name: Resolve target
         id: target
         run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "target=prod" >> $GITHUB_OUTPUT
-          else
-            echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
-          fi
+          echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
+
+      - name: Print deployment context
+        run: |
+          echo "Deploying target: ${{ steps.target.outputs.target }}"
+          echo "Git ref: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
 
       - name: Deploy bundle
         env:
