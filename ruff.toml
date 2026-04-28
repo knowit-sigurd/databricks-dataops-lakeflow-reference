@@ -1,2 +1,2 @@
-[lint]
+[lint.pyflakes]
 builtins = ["spark"]
