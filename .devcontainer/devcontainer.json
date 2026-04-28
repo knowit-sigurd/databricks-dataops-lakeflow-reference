@@ -1,0 +1,29 @@
+{
+  "name": "Local Spark",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace/databricks-dev-container,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace/databricks-dev-container",
+  "mounts": [
+    "source=${localEnv:HOME}/.databrickscfg,target=/home/app/.databrickscfg,type=bind,readonly",
+    "source=${localEnv:HOME}/.databricks,target=/home/app/.databricks,type=bind"
+  ],
+  "containerEnv": {
+    "DATABRICKS_CONFIG_PROFILE": "",
+    "DATABRICKS_WAREHOUSE_ID": "",
+    "PYTHONPATH": "/workspace/databricks-dev-container/src",
+    "SPARK_CONF_DIR": "/workspace/databricks-dev-container/.devcontainer/spark-conf"
+  },
+  "postStartCommand": "uv sync && bash .devcontainer/scripts/check-databricks-config.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "usernamehw.errorlens"
+      ]
+    }
+  }
+}
