@@ -17,3 +17,11 @@ resources:
         - file:
             path: ./pipelines/customer_pipeline.py
       serverless: true
+    orders_pipeline:
+      name: "${bundle.target}_orders_pipeline"
+      catalog: dataops_lab
+      schema: sdp
+      libraries:
+        - file:
+            path: ./pipelines/orders_pipeline.py
+      serverless: true
