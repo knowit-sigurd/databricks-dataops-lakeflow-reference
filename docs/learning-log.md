@@ -1024,3 +1024,45 @@ Remaining gaps:
 - implement rejected row handling as an SDP extension
 - evaluate how this integrates with multiple pipelines
 - define when rejected tables are required vs optional
+
+## Week 7 – Day 4 – Multiple pipelines and execution model shift
+
+### What I observed
+I implemented multiple independent pipelines in SDP and saw that each pipeline manages its own execution and dependencies internally.
+
+Pipelines are no longer executed as a sequence of jobs, but as a graph of data dependencies.
+
+Each pipeline runs independently and defines its own DAG through table relationships.
+
+### What I learned
+SDP uses a fundamentally different execution model compared to traditional data warehouse solutions.
+
+Instead of orchestrating jobs in a specific order, SDP derives execution order from data dependencies defined in code.
+
+This removes the need for explicit orchestration within a pipeline, but shifts responsibility to defining correct data relationships.
+
+I also realized that:
+- pipelines scale horizontally (more pipelines), not vertically (more steps in one system)
+- orchestration still exists, but at a higher level between pipelines, not within them
+
+### Practical conclusion
+To work effectively with SDP:
+- define dependencies through `dlt.read` instead of job sequencing
+- keep pipelines logically independent
+- avoid recreating custom orchestration logic inside pipelines
+
+For larger solutions:
+- use multiple pipelines
+- handle cross-pipeline dependencies separately
+
+### Current position
+I now have:
+- multiple working SDP pipelines
+- understanding of pipeline-level dependency management
+- a clear comparison with my v2 registry/orchestration model
+
+Remaining gaps:
+- understanding cross-pipeline orchestration patterns
+- learning how to coordinate pipelines in larger solutions
+- deciding when custom orchestration is still required
+
