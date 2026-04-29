@@ -29,9 +29,13 @@ targets:
         customer_pipeline:
           configuration:
             quality_mode: fail
+            pipelines.maxFlowRetryAttempts: "0"
+            pipelines.numUpdateRetryAttempts: "0"
         orders_pipeline:
           configuration:
             quality_mode: fail
+            pipelines.maxFlowRetryAttempts: "0"
+            pipelines.numUpdateRetryAttempts: "0"
 
 resources:
   pipelines:
