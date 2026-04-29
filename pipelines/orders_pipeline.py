@@ -1,6 +1,9 @@
 import dlt
 from pyspark.sql import functions as F
 
+quality_mode = spark.conf.get("pipelines.quality_mode", "drop")
+expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
+
 
 @dlt.table(
     name="orders_bronze",
@@ -22,7 +25,7 @@ def orders_bronze():
     name="orders_silver",
     comment="Validated orders"
 )
-@dlt.expect_or_drop("valid_amount", "amount IS NOT NULL")
+@expect_fn("valid_amount", "amount IS NOT NULL")
 def orders_silver():
     df = dlt.read("orders_bronze")
 

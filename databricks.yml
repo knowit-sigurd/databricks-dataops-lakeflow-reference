@@ -24,6 +24,14 @@ targets:
       host: https://dbc-639f4875-165d.cloud.databricks.com
     variables:
       target_schema: sdp_prod
+    resources:
+      pipelines:
+        customer_pipeline:
+          configuration:
+            quality_mode: fail
+        orders_pipeline:
+          configuration:
+            quality_mode: fail
 
 resources:
   pipelines:
@@ -31,6 +39,8 @@ resources:
       name: "${var.deployment_suffix}_customer_pipeline"
       catalog: dataops_lab
       schema: "${var.target_schema}"
+      configuration:
+        quality_mode: drop
       libraries:
         - file:
             path: ./pipelines/customer_pipeline.py
@@ -40,6 +50,8 @@ resources:
       name: "${var.deployment_suffix}_orders_pipeline"
       catalog: dataops_lab
       schema: "${var.target_schema}"
+      configuration:
+        quality_mode: drop
       libraries:
         - file:
             path: ./pipelines/orders_pipeline.py

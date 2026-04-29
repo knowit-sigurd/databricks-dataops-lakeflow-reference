@@ -1,6 +1,9 @@
 from pyspark.sql import functions as F
 import dlt
 
+quality_mode = spark.conf.get("pipelines.quality_mode", "drop")
+expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
+
 
 @dlt.table(
     name="customers_bronze",
@@ -25,8 +28,8 @@ def customers_bronze():
     name="customers_silver",
     comment="Validated customers"
 )
-@dlt.expect_or_drop("valid_customer_id", "customer_id IS NOT NULL")
-@dlt.expect_or_drop("valid_customer_name", "customer_name IS NOT NULL")
+@expect_fn("valid_customer_id", "customer_id IS NOT NULL")
+@expect_fn("valid_customer_name", "customer_name IS NOT NULL")
 def customers_silver():
     df = dlt.read("customers_bronze")
 
