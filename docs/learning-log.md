@@ -1219,3 +1219,48 @@ I now have:
 Remaining gaps:
 - integrate local development into CI/CD
 - refine testing strategy for SDP pipelines
+
+## Week 8 – Day 3 – CI/CD deployment for SDP pipelines
+
+### What I observed
+I implemented a deploy workflow for the SDP repository using GitHub Actions.
+
+- Created a new `deploy.yml` workflow
+- Triggered deployment manually using `workflow_dispatch`
+- Used Databricks CLI with service principal authentication
+- Successfully deployed pipelines to the new workspace
+
+The workflow integrates with existing CI, allowing a full flow from:
+- local development → CI → deployment → Databricks pipeline execution
+
+### What I learned
+Even when using platform-native pipelines (SDP), CI/CD remains a critical part of the architecture.
+
+I learned that:
+- GitHub Actions must be explicitly created in each repository
+- workflows only appear in GitHub after being committed to the default branch
+- deployment logic is simpler for SDP compared to job-based execution
+- service principal authentication works consistently across both v2 and SDP setups
+
+### Practical conclusion
+For SDP repositories:
+- use GitHub Actions to manage deployment via DAB
+- keep deployment workflows simple and focused
+- use manual triggers (`workflow_dispatch`) during development
+- rely on CI for quality validation before deployment
+
+This creates a clean separation between:
+- development (local/devcontainer)
+- validation (CI)
+- execution (Databricks pipelines)
+
+### Current position
+I now have:
+- a working CI pipeline using `uv`, pytest, and ruff
+- a deploy workflow for SDP pipelines
+- successful end-to-end deployment from GitHub to Databricks
+
+Remaining gaps:
+- automate deployment based on PR or branch events
+- refine team workflows for pipeline promotion
+- implement PR-based pipeline isolation
