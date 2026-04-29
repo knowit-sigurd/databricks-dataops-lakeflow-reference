@@ -1,5 +1,4 @@
 import dlt
-from pyspark.sql import functions as F
 
 from databricks_dataops_lab_sdp.customers import (
     enrich_customers,
