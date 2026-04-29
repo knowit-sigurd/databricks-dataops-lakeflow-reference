@@ -1,9 +1,6 @@
 import dlt
 
-from databricks_dataops_lab_sdp.customers import (
-    enrich_customers,
-    standardize_customers,
-)
+from customers import enrich_customers, standardize_customers
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop

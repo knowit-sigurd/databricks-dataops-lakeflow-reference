@@ -40,15 +40,6 @@ uv run ruff check .     # lint
 uv run pytest           # tests
 ```
 
-If `.venv` becomes invalid, rebuild it with:
-
-```bash
-rm -rf .venv
-python3 -m virtualenv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-```
-
 Requires a devcontainer or local Spark config under `.devcontainer/spark-conf/`.
 
 ## CI/CD
