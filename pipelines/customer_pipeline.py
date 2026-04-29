@@ -1,7 +1,7 @@
 from pyspark.sql import functions as F
 import dlt
 
-quality_mode = spark.conf.get("pipelines.quality_mode", "drop")
+quality_mode = spark.conf.get("quality_mode", "drop")
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 
 
