@@ -1304,3 +1304,53 @@ Remaining gaps:
 - pipeline cleanup strategy (removing old PR pipelines)
 - schema isolation for PR pipelines
 - advanced promotion strategies
+
+## Week 8 – Day 4 – PR-based deployment and quality modes
+
+### What I observed
+I implemented PR-based deployment for SDP pipelines using GitHub Actions and Databricks Asset Bundles.
+
+The implementation now uses:
+- `deployment_suffix` to control pipeline names
+- `target_schema` to control schema placement
+- `quality_mode` to control data quality behavior
+
+PR and dev deployments write to `sdp_dev`, while production writes to `sdp_prod`.
+
+Pipeline names are now generated from `deployment_suffix`, so PR pipelines can get names like:
+- `pr_12_customer_pipeline`
+
+I also introduced different quality behavior:
+- dev / PR → bad rows are dropped and the pipeline succeeds
+- prod → bad rows fail the pipeline
+
+### What I learned
+Dynamic naming and environment behavior should be handled through GitHub Actions variables and DAB variables, not through unsupported string manipulation inside `databricks.yml`.
+
+I also learned that SDP production mode includes built-in retry behavior. This is useful for transient platform failures, but not ideal for deterministic data quality failures.
+
+Data quality failures should usually fail clearly rather than retry repeatedly.
+
+### Practical conclusion
+The current pattern is:
+
+- use GitHub Actions to resolve deployment context
+- pass deployment variables into DAB
+- use stable schemas for dev and prod
+- use `quality_mode` to control validation behavior per environment
+
+For production data quality failures:
+- disable or reduce automatic retries
+- rely on clear failure feedback instead of repeated retries
+
+### Current position
+I now have:
+- PR-based pipeline deployment
+- stable dev/prod schema separation
+- environment-specific quality behavior
+- better understanding of SDP retry behavior
+
+Remaining gaps:
+- confirm final retry settings in `databricks.yml`
+- define cleanup strategy for old PR pipelines
+- refine production deployment and monitoring patterns
