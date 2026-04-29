@@ -1,6 +1,10 @@
 bundle:
   name: dataops-lab-sdp
 
+variables:
+  deployment_suffix:
+    default: dev
+
 targets:
   dev:
     mode: development
@@ -20,7 +24,7 @@ targets:
 resources:
   pipelines:
     customer_pipeline:
-      name: "${bundle.target}_customer_pipeline"
+      name: "${var.deployment_suffix}_customer_pipeline"
       catalog: dataops_lab
       schema: sdp
       libraries:
@@ -28,7 +32,7 @@ resources:
             path: ./pipelines/customer_pipeline.py
       serverless: true
     orders_pipeline:
-      name: "${bundle.target}_orders_pipeline"
+      name: "${var.deployment_suffix}_orders_pipeline"
       catalog: dataops_lab
       schema: sdp
       libraries:
