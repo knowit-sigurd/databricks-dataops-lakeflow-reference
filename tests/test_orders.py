@@ -1,6 +1,6 @@
 from pyspark.sql import Row
 
-from databricks_dataops_lab_sdp.orders import (
+from orders import (
     enrich_orders,
     rejected_orders,
     valid_orders,

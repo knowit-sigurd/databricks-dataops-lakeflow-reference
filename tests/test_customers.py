@@ -1,6 +1,6 @@
 from pyspark.sql import Row
 
-from databricks_dataops_lab_sdp.customers import (
+from customers import (
     enrich_customers,
     rejected_customers,
     standardize_customers,
