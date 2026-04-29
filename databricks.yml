@@ -45,7 +45,6 @@ resources:
         - file:
             path: ./pipelines/customer_pipeline.py
       serverless: true
-      continuous: false
     orders_pipeline:
       name: "${var.deployment_suffix}_orders_pipeline"
       catalog: dataops_lab
@@ -56,4 +55,3 @@ resources:
         - file:
             path: ./pipelines/orders_pipeline.py
       serverless: true
-      continuous: false
