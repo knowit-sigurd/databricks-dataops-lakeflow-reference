@@ -1,126 +1,66 @@
 # databricks-dataops-lab-sdp
 
-A **Databricks-native DataOps learning project** focused on using:
+A Databricks-native DataOps project using Lakeflow / Spark Declarative Pipelines (SDP)
+and Databricks Asset Bundles (DAB) to explore Git-driven pipeline promotion.
 
-- Databricks Asset Bundles (DAB)
-- Lakeflow / Spark Declarative Pipelines (SDP)
-- Serverless workflows
-- Git-driven promotion
+## Project structure
 
----
+```
+pipelines/          # DLT pipeline definitions
+tests/              # Smoke tests (pytest)
+scripts/            # Local dev utilities
+.github/workflows/  # CI and deploy pipelines
+databricks.yml      # Bundle config (targets: dev, test, prod)
+```
 
-## Purpose
+## How it works
 
-This repository explores how to implement DataOps patterns using **platform-native capabilities** instead of custom frameworks.
+Pipelines are defined declaratively in Python using the `dlt` library and deployed
+as Databricks Asset Bundles. Promotion is controlled entirely through Git.
 
-The goal is to compare:
+```
+PR opened   →  deploys pr_<number>_* pipelines to dev  (quality_mode: drop)
+Merged to main  →  deploys prod_* pipelines to prod    (quality_mode: fail)
+```
 
-- custom pipeline framework (v2 repo)
-vs
-- Databricks-native pipelines (this repo)
+Schemas are also environment-scoped:
 
----
+| Target | Schema   | On bad rows                        |
+|--------|----------|------------------------------------|
+| dev/PR | sdp_dev  | Drop row                           |
+| prod   | sdp_prod | Fail pipeline (no retries)         |
 
-## Architecture direction
+## Local development
 
-This project follows a **Databricks-native approach**:
+```bash
+uv venv .venv
+uv pip install -r requirements.txt
 
-- Pipelines defined declaratively (SDP)
-- Orchestration handled by Databricks
-- Execution on serverless compute
-- Deployment via Databricks Asset Bundles
-- Promotion controlled through Git
+uv run ruff check .     # lint
+uv run pytest           # tests
+```
 
----
+Requires a devcontainer or local Spark config under `.devcontainer/spark-conf/`.
 
-## Deployment model
+## CI/CD
 
-This project uses PR-based pipeline deployment:
+| Trigger          | Workflow       | What happens                         |
+|------------------|----------------|--------------------------------------|
+| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to dev   |
+| Push to main     | Deploy         | Deploy `prod` target to production   |
+| Manual dispatch  | Deploy         | Deploy to chosen target (dev/test)   |
 
-- PR → isolated pipelines (pr_<number>)
-- main → production pipelines
+Databricks credentials are stored as GitHub secrets:
+`DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`.
 
-Schema separation:
-- dev/PR → sdp_dev
-- prod → sdp_prod
+## Pipelines
 
-Validation behavior:
-- dev/PR → drop invalid rows
-- prod → fail on invalid rows
+| Pipeline          | Bronze table     | Silver table     | Quality check       |
+|-------------------|------------------|------------------|---------------------|
+| customer_pipeline | customers_bronze | customers_silver | non-null id + name  |
+| orders_pipeline   | orders_bronze    | orders_silver    | non-null amount     |
 
----
+## Cleanup
 
-## Execution model
-
-This project follows a Databricks-native promotion model:
-
-```text
-PR → test (validation)
-main → prod
-
----
-
-## Cleanup strategy
-
-PR-based pipelines are temporary and should be removed after PR merge.
-
-This is not yet automated and is a future improvement.
-
----
-
-## Architecture decision
-
-| Area                   | v2   | SDP        |
-| ---------------------- | ---- | ---------- |
-| Who controls execution | You  | Databricks |
-| Complexity             | High | Low        |
-| Flexibility            | High | Medium     |
-
-
-| Area             | v2          | SDP                 |
-| ---------------- | ----------- | ------------------- |
-| Validation logic | custom code | expectations        |
-| Rejected rows    | ✔           | ❌ (needs extension) |
-| Observability    | SQL-based   | UI-based            |
-
-
-| Area        | v2      | SDP |
-| ----------- | ------- | --- |
-| Audit table | ✔       | ❌   |
-| UI          | ❌       | ✔   |
-| Lineage     | limited | ✔   |
-
-
-| Area          | v2 | SDP         |
-| ------------- | -- | ----------- |
-| Wheel support | ✔  | not primary |
-| DAB usage     | ✔  | ✔           |
-| Serverless    | ❌  | ✔           |
-
-
-| Area              | v2       | SDP                   |
-| ----------------- | -------- | --------------------- |
-| Multi-pipeline    | registry | independent pipelines |
-| Complexity growth | high     | controlled            |
-| Team workflow     | harder   | easier                |
-
-
-If I had to build a new client solution today,
-which approach would I choose?
-- It depends on the use. Propably SDP approach as primary architecture
-
-This project evaluated two approaches:
-
-- custom DataOps framework (v2)
-- Databricks-native pipelines (SDP)
-
-Decision:
-
-SDP is the preferred approach for production systems due to:
-- reduced complexity
-- built-in observability
-- serverless execution
-- better alignment with platform capabilities
-
-Custom frameworks should only be used when platform features are insufficient.
-
+PR-scoped pipelines (`pr_<n>_*`) are not automatically removed after merge.
+Manual cleanup in the Databricks workspace is currently required.
