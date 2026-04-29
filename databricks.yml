@@ -48,8 +48,7 @@ resources:
       libraries:
         - file:
             path: ./pipelines/customer_pipeline.py
-        - file:
-            path: ./dist/databricks_dataops_lab_sdp-0.1.0-py3-none-any.whl
+        - whl: ./dist/databricks_dataops_lab_sdp-0.1.0-py3-none-any.whl
       serverless: true
     orders_pipeline:
       name: "${var.deployment_suffix}_orders_pipeline"
@@ -60,6 +59,5 @@ resources:
       libraries:
         - file:
             path: ./pipelines/orders_pipeline.py
-        - file:
-            path: ./dist/databricks_dataops_lab_sdp-0.1.0-py3-none-any.whl
+        - whl: ./dist/databricks_dataops_lab_sdp-0.1.0-py3-none-any.whl
       serverless: true
