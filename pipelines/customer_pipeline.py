@@ -1,5 +1,9 @@
-from pyspark.sql import functions as F
 import dlt
+
+from databricks_dataops_lab_sdp.customers import (
+    enrich_customers,
+    standardize_customers,
+)
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
@@ -7,7 +11,7 @@ expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 
 @dlt.table(
     name="customers_bronze",
-    comment="Raw customer data"
+    comment="Raw customer data",
 )
 def customers_bronze():
     data = [
@@ -18,28 +22,16 @@ def customers_bronze():
 
     df = spark.createDataFrame(data, ["customer_id", "customer_name", "city"])
 
-    return (
-        df.withColumn("customer_name", F.trim(F.col("customer_name")))
-        .withColumn("city", F.trim(F.col("city")))
-    )
+    return standardize_customers(df)
 
 
 @dlt.table(
     name="customers_silver",
-    comment="Validated customers"
+    comment="Validated customers",
 )
 @expect_fn("valid_customer_id", "customer_id IS NOT NULL")
 @expect_fn("valid_customer_name", "customer_name IS NOT NULL")
 def customers_silver():
     df = dlt.read("customers_bronze")
 
-    return (
-        df.withColumn("customer_key", F.col("customer_id"))
-        .withColumn(
-            "region",
-            F.when(
-                F.col("city").isin("Oslo", "Bergen", "Trondheim"),
-                F.lit("NO"),
-            ).otherwise(F.lit("UNKNOWN")),
-        )
-    )
+    return enrich_customers(df)

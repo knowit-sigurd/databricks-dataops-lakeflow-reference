@@ -1,5 +1,6 @@
 import dlt
-from pyspark.sql import functions as F
+
+from databricks_dataops_lab_sdp.orders import enrich_orders
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
@@ -7,7 +8,7 @@ expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 
 @dlt.table(
     name="orders_bronze",
-    comment="Raw orders data"
+    comment="Raw orders data",
 )
 def orders_bronze():
     data = [
@@ -23,16 +24,10 @@ def orders_bronze():
 
 @dlt.table(
     name="orders_silver",
-    comment="Validated orders"
+    comment="Validated orders",
 )
 @expect_fn("valid_amount", "amount IS NOT NULL")
 def orders_silver():
     df = dlt.read("orders_bronze")
 
-    return df.withColumn(
-        "region",
-        F.when(
-            F.col("city").isin("Oslo", "Bergen", "Trondheim"),
-            F.lit("NO"),
-        ).otherwise(F.lit("UNKNOWN")),
-    )
+    return enrich_orders(df)
