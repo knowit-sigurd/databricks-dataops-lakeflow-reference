@@ -1354,3 +1354,50 @@ Remaining gaps:
 - confirm final retry settings in `databricks.yml`
 - define cleanup strategy for old PR pipelines
 - refine production deployment and monitoring patterns
+
+## Week 8 – Day 5 – Production readiness and final architecture
+
+### What I observed
+I finalized the SDP pipeline architecture and resolved remaining production issues.
+
+- Disabled retry behavior for data quality failures
+- Confirmed correct separation between dev/PR and prod environments
+- Verified pipeline behavior:
+  - dev/PR → drop invalid rows
+  - prod → fail on invalid rows
+
+The architecture is now consistent across:
+- naming
+- schema
+- deployment
+- validation
+
+### What I learned
+Production-ready pipelines require clear behavior for failure scenarios.
+
+Automatic retries are useful for transient failures, but not for deterministic data quality issues.
+
+I also learned that:
+- clean separation of concerns (naming, schema, validation) simplifies architecture
+- most custom logic from v2 is not needed when using SDP
+- platform-native approaches reduce complexity significantly
+
+### Practical conclusion
+The final architecture uses:
+- SDP for orchestration and execution
+- GitHub Actions for deployment control
+- configuration variables for environment behavior
+
+Custom extensions should only be added when the platform does not provide the required functionality.
+
+### Current position
+I now have:
+- production-ready SDP pipelines
+- PR-based deployment model
+- controlled validation behavior
+- consistent and clean architecture
+
+Remaining gaps:
+- pipeline cleanup automation (PR pipelines)
+- optional rejected-row persistence if needed
+- further team workflow refinement

@@ -33,6 +33,23 @@ This project follows a **Databricks-native approach**:
 
 ---
 
+## Deployment model
+
+This project uses PR-based pipeline deployment:
+
+- PR → isolated pipelines (pr_<number>)
+- main → production pipelines
+
+Schema separation:
+- dev/PR → sdp_dev
+- prod → sdp_prod
+
+Validation behavior:
+- dev/PR → drop invalid rows
+- prod → fail on invalid rows
+
+---
+
 ## Execution model
 
 This project follows a Databricks-native promotion model:
@@ -40,6 +57,14 @@ This project follows a Databricks-native promotion model:
 ```text
 PR → test (validation)
 main → prod
+
+---
+
+## Cleanup strategy
+
+PR-based pipelines are temporary and should be removed after PR merge.
+
+This is not yet automated and is a future improvement.
 
 ---
 
@@ -98,3 +123,4 @@ SDP is the preferred approach for production systems due to:
 - better alignment with platform capabilities
 
 Custom frameworks should only be used when platform features are insufficient.
+
