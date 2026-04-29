@@ -1264,3 +1264,43 @@ Remaining gaps:
 - automate deployment based on PR or branch events
 - refine team workflows for pipeline promotion
 - implement PR-based pipeline isolation
+
+## Week 8 – Day 4 – PR-based pipeline deployment
+
+### What I observed
+I implemented PR-based pipeline deployment using GitHub Actions.
+
+- pipelines are now deployed automatically on PR creation
+- each PR gets a unique pipeline name
+- pipelines are isolated and do not conflict
+
+After merging to main, production pipelines are deployed.
+
+### What I learned
+Dynamic pipeline behavior should be handled in CI/CD, not in Databricks bundle configuration.
+
+GitHub Actions is the correct place for:
+- branch detection
+- naming logic
+- environment selection
+
+This avoids limitations in DAB variable handling.
+
+### Practical conclusion
+To implement PR-based pipelines:
+- use GitHub Actions to generate dynamic variables
+- pass variables into DAB during deployment
+- keep `databricks.yml` simple and static
+
+This results in clean and scalable pipeline management.
+
+### Current position
+I now have:
+- automatic PR-based pipeline deployment
+- isolated pipelines per feature branch
+- production deployment tied to main branch
+
+Remaining gaps:
+- pipeline cleanup strategy (removing old PR pipelines)
+- schema isolation for PR pipelines
+- advanced promotion strategies
