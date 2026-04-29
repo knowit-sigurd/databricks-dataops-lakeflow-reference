@@ -1,6 +1,6 @@
 import dlt
 
-from databricks_dataops_lab_sdp.orders import enrich_orders
+from orders import enrich_orders
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop

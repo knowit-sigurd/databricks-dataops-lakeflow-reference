@@ -22,16 +22,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Build wheel
-        run: |
-          pip install build
-          python -m build --wheel
-
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
