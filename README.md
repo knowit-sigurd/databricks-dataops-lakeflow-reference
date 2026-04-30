@@ -30,17 +30,18 @@ Schemas are also environment-scoped:
 | dev/PR | sdp_dev  | Drop row                           |
 | prod   | sdp_prod | Fail pipeline (no retries)         |
 
-## Local development
+
+## Local development workflow
+
+Development is performed inside the VS Code devcontainer.
+
+Recommended local checks before creating a PR:
 
 ```bash
-uv venv .venv
-uv pip install -r requirements.txt
-
-uv run ruff check .     # lint
-uv run pytest           # tests
-```
-
-Requires a devcontainer or local Spark config under `.devcontainer/spark-conf/`.
+uv run ruff check .
+uv run pytest
+databricks bundle validate -t dev
+databricks bundle plan -t dev
 
 ## CI/CD
 

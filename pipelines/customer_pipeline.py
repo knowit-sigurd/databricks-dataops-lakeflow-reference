@@ -3,6 +3,8 @@ import dlt
 from customers import enrich_customers, standardize_customers
 
 quality_mode = spark.conf.get("quality_mode", "drop")
+source_path = spark.conf.get("source_path", "./data")
+
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 
 
@@ -11,13 +13,11 @@ expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
     comment="Raw customer data",
 )
 def customers_bronze():
-    data = [
-        (1, "Alice", "Oslo"),
-        (2, "Bob", "Bergen"),
-        (3, None, "Trondheim"),
-    ]
-
-    df = spark.createDataFrame(data, ["customer_id", "customer_name", "city"])
+    df = (
+        spark.read.option("header", True)
+        .option("inferSchema", True)
+        .csv(f"{source_path}/customers.csv")
+    )
 
     return standardize_customers(df)
 
