@@ -49,3 +49,19 @@ def customers_rejected():
     df = dlt.read("customers_bronze")
 
     return rejected_customers(df)
+
+@dlt.table(
+    name="customers_quality_gate",
+    comment="Fails production pipeline if rejected customer rows exist",
+)
+@dlt.expect_or_fail(
+    "no_rejected_customer_rows",
+    "quality_mode != 'fail' OR rejected_count = 0",
+)
+def customers_quality_gate():
+    rejected_count = dlt.read("customers_rejected").count()
+
+    return spark.createDataFrame(
+        [(quality_mode, rejected_count)],
+        ["quality_mode", "rejected_count"],
+    )
