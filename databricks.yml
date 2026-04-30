@@ -6,6 +6,8 @@ variables:
     default: dev
   target_schema:
     default: sdp_dev
+  source_path:
+    default: "/Volumes/dataops_lab/sdp_dev/raw"
 
 targets:
   dev:
@@ -29,11 +31,13 @@ targets:
         customer_pipeline:
           configuration:
             quality_mode: fail
+            source_path: "${var.source_path}"
             pipelines.maxFlowRetryAttempts: "0"
             pipelines.numUpdateRetryAttempts: "0"
         orders_pipeline:
           configuration:
             quality_mode: fail
+            source_path: "${var.source_path}"
             pipelines.maxFlowRetryAttempts: "0"
             pipelines.numUpdateRetryAttempts: "0"
 
@@ -45,6 +49,7 @@ resources:
       schema: "${var.target_schema}"
       configuration:
         quality_mode: drop
+        source_path: "${var.source_path}"
       libraries:
         - file:
             path: ./pipelines/customer_pipeline.py
@@ -59,6 +64,7 @@ resources:
       schema: "${var.target_schema}"
       configuration:
         quality_mode: drop
+        source_path: "${var.source_path}"
       libraries:
         - file:
             path: ./pipelines/orders_pipeline.py

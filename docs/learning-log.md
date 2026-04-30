@@ -1401,3 +1401,44 @@ Remaining gaps:
 - pipeline cleanup automation (PR pipelines)
 - optional rejected-row persistence if needed
 - further team workflow refinement
+
+### From here I started with milestones instead of weekly/daily tasks
+
+## Milestone 1 – SDP testing foundation
+
+### What I observed
+I extracted and tested transformation logic from the SDP pipelines.
+
+The repo now has meaningful tests for customer and order transformation behavior, and the tests run successfully in the local/devcontainer setup.
+
+After the changes, the Databricks pipelines still deployed and ran as expected.
+
+### What I learned
+SDP pipelines can stay platform-native while still having testable Python logic.
+
+The important separation is:
+- Databricks pipeline files define runtime behavior
+- reusable transformation functions can be tested locally
+
+This brings the test discipline from the v2 framework into the SDP approach without rebuilding the custom v2 runner.
+
+### Practical conclusion
+For SDP projects:
+- keep pipeline definitions thin
+- test transformation logic locally
+- rely on Databricks for pipeline execution and observability
+
+This gives a good balance between local development speed and platform-native runtime behavior.
+
+### Current position
+I now have:
+- meaningful Spark-based tests in the SDP repo
+- local validation of transformation behavior
+- Databricks pipeline execution still working
+- stronger confidence in the SDP repo as a client-ready reference
+
+Remaining gaps:
+- replace hardcoded inline data with file-based ingestion
+- decide whether reusable logic should move into `src/`
+- add rejected-row persistence if required
+
