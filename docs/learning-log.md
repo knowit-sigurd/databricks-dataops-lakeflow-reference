@@ -1404,7 +1404,7 @@ Remaining gaps:
 
 ### From here I started with milestones instead of weekly/daily tasks
 
-## Milestone 1 – SDP testing foundation
+## 2026-04-29 Milestone 1 – SDP testing foundation
 
 ### What I observed
 I extracted and tested transformation logic from the SDP pipelines.
@@ -1442,3 +1442,51 @@ Remaining gaps:
 - decide whether reusable logic should move into `src/`
 - add rejected-row persistence if required
 
+## 2026-04-30 Milestone 2 – File-based ingestion for SDP pipelines
+
+### What I observed
+I replaced hardcoded inline data in the SDP pipelines with file-based ingestion using CSV files stored in the repository.
+
+- Bronze tables now read from external files instead of Python lists
+- Pipelines ran successfully after updating permissions in Databricks
+- Validation behavior remained unchanged:
+  - dev / PR → invalid rows dropped
+  - prod → pipeline fails on invalid data
+
+Local testing in the devcontainer confirmed that Spark can read and process the files correctly.
+
+### What I learned
+Moving from inline data to file-based ingestion significantly improves realism and clarity.
+
+I learned that:
+- ingestion should be treated as a separate concern from transformation
+- file-based inputs better represent real-world pipelines
+- permissions in Unity Catalog are critical for successful pipeline execution
+- local Spark testing can validate ingestion logic before deployment
+
+I also reinforced that:
+- SDP pipelines remain simple even when using external data sources
+- transformation logic and validation behavior are unaffected by the ingestion method
+
+### Practical conclusion
+For SDP pipelines:
+- avoid hardcoded data inside pipeline definitions
+- use external files (or later, volumes) for ingestion
+- keep bronze layer responsible for reading source data
+- keep silver layer focused on validation and transformation
+
+This improves both:
+- realism for client demonstrations
+- maintainability of the pipeline
+
+### Current position
+I now have:
+- SDP pipelines reading from external CSV files
+- realistic bronze ingestion layer
+- working validation behavior across environments
+- local and Databricks execution aligned
+
+Remaining gaps:
+- move from repo-based files to Unity Catalog volumes or external locations
+- implement rejected/quarantine tables if required
+- introduce schema evolution handling
