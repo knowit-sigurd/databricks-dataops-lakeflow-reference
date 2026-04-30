@@ -36,9 +36,13 @@ def customers_bronze():
 def customers_silver():
     df = dlt.read("customers_bronze")
 
-    valid_df = valid_customers(df)
+    if quality_mode == "fail":
+        # In prod, let expect_or_fail enforce validity.
+        # Do not pre-filter, otherwise the expectation never fails.
+        return enrich_customers(df)
 
-    return enrich_customers(valid_df)
+    # In dev / PR, keep silver clean while allowing the pipeline to succeed.
+    return enrich_customers(valid_customers(df))
 
 
 @dlt.table(
@@ -49,19 +53,3 @@ def customers_rejected():
     df = dlt.read("customers_bronze")
 
     return rejected_customers(df)
-
-@dlt.table(
-    name="customers_quality_gate",
-    comment="Fails production pipeline if rejected customer rows exist",
-)
-@dlt.expect_or_fail(
-    "no_rejected_customer_rows",
-    "quality_mode != 'fail' OR rejected_count = 0",
-)
-def customers_quality_gate():
-    rejected_count = dlt.read("customers_rejected").count()
-
-    return spark.createDataFrame(
-        [(quality_mode, rejected_count)],
-        ["quality_mode", "rejected_count"],
-    )
