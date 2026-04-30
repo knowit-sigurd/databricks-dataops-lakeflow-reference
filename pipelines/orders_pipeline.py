@@ -1,6 +1,10 @@
 import dlt
 
-from orders import enrich_orders
+from orders import (
+    enrich_orders,
+    valid_orders,
+    rejected_orders,
+)
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
@@ -27,4 +31,17 @@ def orders_bronze():
 @expect_fn("valid_amount", "amount IS NOT NULL")
 def orders_silver():
     df = dlt.read("orders_bronze")
-    return enrich_orders(df)
+
+    valid_df = valid_orders(df)
+
+    return enrich_orders(valid_df)
+
+
+@dlt.table(
+    name="orders_rejected",
+    comment="Rejected orders with reason",
+)
+def orders_rejected():
+    df = dlt.read("orders_bronze")
+
+    return rejected_orders(df)
