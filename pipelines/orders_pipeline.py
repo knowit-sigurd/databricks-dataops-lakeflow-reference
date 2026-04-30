@@ -45,3 +45,20 @@ def orders_rejected():
     df = dlt.read("orders_bronze")
 
     return rejected_orders(df)
+
+
+@dlt.table(
+    name="orders_quality_gate",
+    comment="Fails production pipeline if rejected order rows exist",
+)
+@dlt.expect_or_fail(
+    "no_rejected_order_rows",
+    "quality_mode != 'fail' OR rejected_count = 0",
+)
+def orders_quality_gate():
+    rejected_count = dlt.read("orders_rejected").count()
+
+    return spark.createDataFrame(
+        [(quality_mode, rejected_count)],
+        ["quality_mode", "rejected_count"],
+    )
