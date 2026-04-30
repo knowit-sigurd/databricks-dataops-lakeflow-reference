@@ -1533,3 +1533,40 @@ Remaining gaps:
 - add gold layer (aggregation)
 - define cleanup strategy for rejected data
 - evaluate how rejected data should be consumed
+
+## Milestone 3 refinement – Cleaner rejected-row and production validation pattern
+
+### What I observed
+I removed the artificial quality gate tables and simplified the SDP validation pattern.
+
+The pipeline now behaves differently by quality mode:
+- dev / PR keeps silver clean and writes rejected rows
+- prod fails directly on invalid silver rows using `expect_or_fail`
+
+This made the pipeline DAG cleaner and easier to explain.
+
+### What I learned
+Rejected tables and expectations serve different purposes.
+
+- expectations enforce data quality
+- rejected tables support investigation and remediation
+
+Using a separate quality gate table works, but it adds an artificial control-flow table that may make the DAG harder to understand.
+
+### Practical conclusion
+The cleaner pattern is:
+- use SDP expectations for enforcement
+- use rejected tables for visibility
+- avoid quality gate tables unless there is a strict requirement to both fail production and persist rejected rows in the same failed run
+
+### Current position
+I now have:
+- cleaner SDP pipeline DAGs
+- rejected-row visibility in dev / PR
+- fail-fast production behavior
+- better separation between enforcement and investigation
+
+Remaining gaps:
+- decide whether rejected rows are required in production failed runs
+- add gold layer
+- define how rejected rows should be monitored or consumed
