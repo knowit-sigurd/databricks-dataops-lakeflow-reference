@@ -1490,3 +1490,46 @@ Remaining gaps:
 - move from repo-based files to Unity Catalog volumes or external locations
 - implement rejected/quarantine tables if required
 - introduce schema evolution handling
+
+## Milestone 3 – Rejected data as SDP extension
+
+### What I observed
+I added rejected (quarantine) tables to the SDP pipelines.
+
+- invalid rows are now persisted with rejection reasons
+- silver tables contain only valid rows
+- SDP expectations still provide validation metrics
+
+The pipelines now produce both:
+- validated datasets
+- rejected datasets
+
+### What I learned
+SDP expectations provide strong observability but do not persist invalid rows.
+
+Rejected rows serve a different purpose:
+- business traceability
+- debugging and data correction
+
+I learned that the best approach is not to replace SDP validation, but to extend it.
+
+### Practical conclusion
+Use a hybrid model:
+
+- SDP expectations for validation and monitoring
+- rejected tables for business-level visibility
+
+This combines:
+- platform-native simplicity
+- practical data engineering needs
+
+### Current position
+I now have:
+- rejected tables integrated into SDP pipelines
+- validation metrics and row-level visibility
+- a strong comparison with my v2 approach
+
+Remaining gaps:
+- add gold layer (aggregation)
+- define cleanup strategy for rejected data
+- evaluate how rejected data should be consumed

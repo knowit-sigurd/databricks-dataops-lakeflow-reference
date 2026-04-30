@@ -1,6 +1,11 @@
 import dlt
 
-from customers import enrich_customers, standardize_customers
+from customers import (
+    enrich_customers,
+    standardize_customers,
+    valid_customers,
+    rejected_customers,
+)
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
@@ -31,4 +36,16 @@ def customers_bronze():
 def customers_silver():
     df = dlt.read("customers_bronze")
 
-    return enrich_customers(df)
+    valid_df = valid_customers(df)
+
+    return enrich_customers(valid_df)
+
+
+@dlt.table(
+    name="customers_rejected",
+    comment="Rejected customer rows with reason",
+)
+def customers_rejected():
+    df = dlt.read("customers_bronze")
+
+    return rejected_customers(df)
