@@ -1,4 +1,5 @@
-order_id,amount,city
-1,100,Oslo
-2,,Bergen
-3,300,Trondheim
+order_id,customer_id,amount,city
+1,1,100,Oslo
+2,2,,Bergen
+3,2,300,Bergen
+4,99,50,Unknown

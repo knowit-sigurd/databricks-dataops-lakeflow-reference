@@ -8,6 +8,8 @@ variables:
     default: sdp_dev
   source_path:
     default: "/Volumes/dataops_lab/sdp_dev/raw"
+  quality_mode:
+    default: drop
 
 targets:
   dev:
@@ -26,50 +28,37 @@ targets:
       host: https://dbc-639f4875-165d.cloud.databricks.com
     variables:
       target_schema: sdp_prod
+      quality_mode: fail
+      source_path: "/Volumes/dataops_lab/sdp_prod/raw"
     resources:
       pipelines:
-        customer_pipeline:
+        medallion_pipeline:
           configuration:
-            quality_mode: fail
-            source_path: "${var.source_path}"
-            pipelines.maxFlowRetryAttempts: "0"
-            pipelines.numUpdateRetryAttempts: "0"
-        orders_pipeline:
-          configuration:
-            quality_mode: fail
-            source_path: "${var.source_path}"
             pipelines.maxFlowRetryAttempts: "0"
             pipelines.numUpdateRetryAttempts: "0"
 
 resources:
   pipelines:
-    customer_pipeline:
-      name: "${var.deployment_suffix}_customer_pipeline"
+    medallion_pipeline:
+      name: "${var.deployment_suffix}_medallion_pipeline"
       catalog: dataops_lab
-      schema: "${var.target_schema}"
+      target: "${var.target_schema}"
+      serverless: true
       configuration:
-        quality_mode: drop
+        quality_mode: "${var.quality_mode}"
         source_path: "${var.source_path}"
       libraries:
         - file:
             path: ./pipelines/customer_pipeline.py
         - file:
-            path: ./pipelines/common.py
-        - file:
-            path: ./pipelines/customers.py
-      serverless: true
-    orders_pipeline:
-      name: "${var.deployment_suffix}_orders_pipeline"
-      catalog: dataops_lab
-      schema: "${var.target_schema}"
-      configuration:
-        quality_mode: drop
-        source_path: "${var.source_path}"
-      libraries:
-        - file:
             path: ./pipelines/orders_pipeline.py
         - file:
-            path: ./pipelines/common.py
+            path: ./pipelines/gold_pipeline.py
+        - file:
+            path: ./pipelines/customers.py
         - file:
             path: ./pipelines/orders.py
-      serverless: true
+        - file:
+            path: ./pipelines/gold.py
+        - file:
+            path: ./pipelines/common.py

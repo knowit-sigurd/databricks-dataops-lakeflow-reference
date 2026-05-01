@@ -10,10 +10,10 @@ from orders import (
 def test_valid_orders_filters_null_amounts(spark):
     df = spark.createDataFrame(
         [
-            Row(order_id=1, amount=100, city="Oslo"),
-            Row(order_id=2, amount=None, city="Bergen"),
+            Row(order_id=1, customer_id=1, amount=100, city="Oslo"),
+            Row(order_id=2, customer_id=2, amount=None, city="Bergen"),
         ],
-        schema="order_id INT, amount INT, city STRING",
+        schema="order_id INT, customer_id INT, amount INT, city STRING",
     )
 
     result = valid_orders(df)
