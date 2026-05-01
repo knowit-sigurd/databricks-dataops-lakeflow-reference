@@ -52,6 +52,15 @@ jobs:
           echo "Git ref: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
 
+      - name: Upload source data
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          chmod +x scripts/upload_data.sh
+          ./scripts/upload_data.sh ${{ steps.resolve_context.outputs.target }}
+
       - name: Deploy bundle
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
