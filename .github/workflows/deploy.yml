@@ -71,6 +71,10 @@ jobs:
             -t ${{ steps.resolve_context.outputs.target }} \
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }}
 
+          databricks bundle plan \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }}
+            
           databricks bundle deploy \
             -t ${{ steps.resolve_context.outputs.target }} \
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
