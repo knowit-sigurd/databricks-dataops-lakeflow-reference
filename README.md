@@ -6,9 +6,9 @@ and Databricks Asset Bundles (DAB) to explore Git-driven pipeline promotion.
 ## Project structure
 
 ```
-pipelines/          # DLT pipeline definitions
+pipelines/          # DLT pipeline definitions (customer, orders, gold)
 tests/              # Smoke tests (pytest)
-scripts/            # Local dev utilities
+scripts/            # Local dev utilities (upload_data.sh)
 .github/workflows/  # CI and deploy pipelines
 databricks.yml      # Bundle config (targets: dev, test, prod)
 ```
@@ -19,16 +19,16 @@ Pipelines are defined declaratively in Python using the `dlt` library and deploy
 as Databricks Asset Bundles. Promotion is controlled entirely through Git.
 
 ```
-PR opened   →  deploys pr_<number>_* pipelines to dev  (quality_mode: drop)
-Merged to main  →  deploys prod_* pipelines to prod    (quality_mode: fail)
+PR opened       →  deploys pr_<number>_medallion_pipeline to dev  (quality_mode: drop)
+Merged to main  →  deploys prod_medallion_pipeline to prod        (quality_mode: fail)
 ```
 
 Schemas are also environment-scoped:
 
-| Target | Schema   | On bad rows                        |
-|--------|----------|------------------------------------|
-| dev/PR | sdp_dev  | Drop row                           |
-| prod   | sdp_prod | Fail pipeline (no retries)         |
+| Target | Schema   | Source volume                      | On bad rows                |
+|--------|----------|------------------------------------|----------------------------|
+| dev/PR | sdp_dev  | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
+| prod   | sdp_prod | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
 
 
 ## Local development workflow
@@ -42,26 +42,56 @@ uv run ruff check .
 uv run pytest
 databricks bundle validate -t dev
 databricks bundle plan -t dev
+```
+
+To upload source data to the dev volume:
+
+```bash
+scripts/upload_data.sh dev
+```
 
 ## CI/CD
 
-| Trigger          | Workflow       | What happens                         |
-|------------------|----------------|--------------------------------------|
-| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to dev   |
-| Push to main     | Deploy         | Deploy `prod` target to production   |
-| Manual dispatch  | Deploy         | Deploy to chosen target (dev/test)   |
+| Trigger          | Workflow       | What happens                                  |
+|------------------|----------------|-----------------------------------------------|
+| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to dev            |
+| Push to main     | Deploy         | Deploy `prod` target to production            |
+| Manual dispatch  | Deploy         | Deploy to chosen target (dev/test)            |
+
+The deploy workflow uploads source data to the target volume before running `bundle deploy`.
 
 Databricks credentials are stored as GitHub secrets:
 `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`.
 
-## Pipelines
+## Pipeline
 
-| Pipeline          | Bronze table     | Silver table     | Quality check       |
-|-------------------|------------------|------------------|---------------------|
-| customer_pipeline | customers_bronze | customers_silver | non-null id + name  |
-| orders_pipeline   | orders_bronze    | orders_silver    | non-null amount     |
+All tables are managed by a single `medallion_pipeline` resource with one DAG:
+
+```
+customers_bronze → customers_silver ↘
+                                      → customer_order_summary
+orders_bronze    → orders_silver    ↗
+```
+
+| Layer  | Table                  | Description                        |
+|--------|------------------------|------------------------------------|
+| Bronze | customers_bronze       | Raw customer data                  |
+| Bronze | orders_bronze          | Raw orders data                    |
+| Silver | customers_silver       | Validated, enriched customers      |
+| Silver | customers_rejected     | Rejected customer rows with reason |
+| Silver | orders_silver          | Validated, enriched orders         |
+| Silver | orders_rejected        | Rejected order rows with reason    |
+| Gold   | customer_order_summary | Customer order aggregation         |
+
+## Deployment
+
+This reference repo uses `--auto-approve` during bundle deployment to keep PR and demo
+resources synchronized with the bundle definition.
+
+In client production environments, destructive bundle changes should be reviewed through
+`databricks bundle plan`, PR review, and environment protection before deployment.
 
 ## Cleanup
 
-PR-scoped pipelines (`pr_<n>_*`) are not automatically removed after merge.
+PR-scoped pipelines (`pr_<n>_medallion_pipeline`) are not automatically removed after merge.
 Manual cleanup in the Databricks workspace is currently required.

@@ -17,19 +17,39 @@ This project uses platform-native capabilities instead of a custom DataOps frame
 
 ## Pipeline model
 
-Pipelines are defined declaratively in Python using the `dlt` library.
-Each pipeline follows a two-layer pattern:
+All tables are managed by a single `medallion_pipeline` resource. The three pipeline
+files (`customer_pipeline.py`, `orders_pipeline.py`, `gold_pipeline.py`) are included
+in the same bundle pipeline so that `dlt.read()` can resolve cross-file dependencies
+and Databricks builds one unified DAG.
 
 ```
-Raw data (inline / source)
-    ↓  @dlt.table
-Bronze table  (customers_bronze / orders_bronze)
-    ↓  @dlt.table + @dlt.expect_or_*
-Silver table  (customers_silver / orders_silver)
+customers_bronze → customers_silver ↘
+                                      → customer_order_summary
+orders_bronze    → orders_silver    ↗
+```
+
+Rejected rows are captured as separate silver-layer tables:
+
+```
+customers_bronze → customers_rejected
+orders_bronze    → orders_rejected
 ```
 
 Execution order is derived from `dlt.read()` dependencies, not from explicit job sequencing.
-Each pipeline is independent and manages its own DAG internally.
+
+## Code structure
+
+Each pipeline file has a corresponding logic module in `pipelines/`:
+
+| Pipeline entrypoint       | Logic module       | Responsibility                    |
+|---------------------------|--------------------|-----------------------------------|
+| customer_pipeline.py      | customers.py       | Standardize, validate, enrich     |
+| orders_pipeline.py        | orders.py          | Validate, enrich                  |
+| gold_pipeline.py          | gold.py            | Join and aggregate                |
+| —                         | common.py          | Shared utilities (e.g. derive_region) |
+
+DLT uploads library files as a flat collection, so modules use bare imports
+(`from common import ...`) rather than package-qualified imports.
 
 ## Data quality
 
@@ -51,13 +71,13 @@ pipelines.numUpdateRetryAttempts: "0"
 ## Environment model
 
 Environments are defined as targets in `databricks.yml`.
-Schema and quality behavior are scoped per target.
+Schema, source volume, and quality behavior are scoped per target.
 
-| Target | Schema   | quality_mode | Retries |
-|--------|----------|--------------|---------|
-| dev    | sdp_dev  | drop         | default |
-| test   | sdp_dev  | drop         | default |
-| prod   | sdp_prod | fail         | 0       |
+| Target | Schema   | Source volume                     | quality_mode | Retries |
+|--------|----------|-----------------------------------|--------------|---------|
+| dev    | sdp_dev  | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
+| test   | sdp_dev  | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
+| prod   | sdp_prod | /Volumes/dataops_lab/sdp_prod/raw | fail         | 0       |
 
 PR-based deployments use `deployment_suffix=pr_<n>` and write to `sdp_dev`,
 giving each PR isolated pipeline names without schema isolation.
@@ -65,21 +85,30 @@ giving each PR isolated pipeline names without schema isolation.
 ## Deployment model
 
 Deployment is controlled through GitHub Actions and Databricks Asset Bundles.
+Source data is uploaded to the target volume before bundle deployment.
 
 ```
 PR opened
-  → GitHub Actions resolves target=dev, deployment_suffix=pr_<n>
+  → upload_data.sh dev
   → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n>
-  → creates pr_<n>_customer_pipeline and pr_<n>_orders_pipeline
+  → creates pr_<n>_medallion_pipeline
 
 Merged to main
-  → GitHub Actions resolves target=prod, deployment_suffix=prod
+  → upload_data.sh prod
   → databricks bundle deploy -t prod --var=deployment_suffix=prod
-  → updates prod_customer_pipeline and prod_orders_pipeline
+  → updates prod_medallion_pipeline
 ```
 
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
 `databricks.yml` stays static — no string manipulation inside bundle configuration.
+
+## Deployment approval policy
+
+This reference repo uses `--auto-approve` during bundle deployment to keep PR and demo
+resources synchronized with the bundle definition.
+
+In client production environments, destructive bundle changes should be reviewed through
+`databricks bundle plan`, PR review, and environment protection before deployment.
 
 ## Development workflow
 
@@ -88,7 +117,7 @@ Local dev (VS Code + devcontainer)
   ↓  uv run ruff check / pytest
 CI (GitHub Actions)
   ↓  lint + smoke tests pass
-Deploy (databricks bundle deploy)
+Deploy (upload_data.sh + databricks bundle deploy)
   ↓
 Databricks pipeline execution (serverless)
 ```
@@ -99,5 +128,4 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 ## Known limitations
 
 - PR-scoped pipelines are not automatically removed after merge — manual cleanup required.
-- Rejected rows are not persisted by default; SDP provides aggregated metrics only.
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.

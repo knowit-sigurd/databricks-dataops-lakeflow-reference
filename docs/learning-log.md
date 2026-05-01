@@ -1570,3 +1570,47 @@ Remaining gaps:
 - decide whether rejected rows are required in production failed runs
 - add gold layer
 - define how rejected rows should be monitored or consumed
+
+## 2026-05-01 ## Milestone 4 – Gold layer and cross-pipeline dependencies
+
+### What I observed
+I extended the SDP pipelines with a Gold layer and introduced cross-table dependencies.
+
+- Added a `customer_order_summary` table combining customer and order data
+- Moved from independent pipelines to a single medallion pipeline resource
+- Databricks automatically derived execution order based on table dependencies
+- Production pipelines now fail before Gold tables are updated when data quality checks fail in Silver
+
+I also implemented file-based ingestion and automated data upload via GitHub Actions.
+
+### What I learned
+SDP handles dependencies through data relationships rather than explicit job orchestration.
+
+By using `dlt.read`, Databricks builds the execution DAG automatically across Bronze, Silver, and Gold layers.
+
+I also learned that:
+- Gold tables should depend only on validated Silver tables
+- data quality failures in upstream tables prevent downstream updates
+- this is correct behavior for production pipelines
+- bundle deployment may require destructive actions when architecture changes, and `--auto-approve` enables automated cleanup
+
+### Practical conclusion
+For SDP pipelines:
+- define dependencies declaratively using `dlt.read`
+- group related Bronze, Silver, and Gold tables into a single pipeline when they share dependencies
+- ensure Gold tables represent business-facing outputs built on validated data
+- use `databricks bundle plan` to review changes before deployment
+
+This creates a clean, client-ready medallion architecture.
+
+### Current position
+I now have:
+- full Bronze → Silver → Gold pipeline
+- cross-table dependencies managed by SDP
+- file-based ingestion integrated with deployment
+- automated deployment with controlled destructive updates
+
+Remaining gaps:
+- define strategy for rejected data handling in production
+- implement PR pipeline cleanup automation
+- refine deployment approval strategy for production environments
