@@ -1659,3 +1659,21 @@ Remaining gaps:
 - further hardening of production deployment
 - monitoring and alerting integration
 
+## Milestone 6 — Explicit bronze schemas and cleanup branch guard
+
+Two correctness fixes that matter for client credibility.
+
+**inferSchema removed:** Replaced `.option("inferSchema", True)` in both bronze
+tables with explicit `StructType` declarations. inferSchema is non-deterministic
+and slow — it reads the whole file before the pipeline logic runs. Explicit schema
+is the contract between ingestion and everything downstream. Declared `LongType`
+for all IDs, `DoubleType` for amount. Known gap: `DecimalType(10,2)` is more
+correct for monetary values; left as `DoubleType` for simplicity in this reference.
+
+**Cleanup guard added:** Added `branches: [main]` to the `pull_request` trigger in
+`cleanup-pr.yml`. The deploy workflow only fires for PRs targeting `main`, so the
+cleanup must be symmetric. Without this guard, closing a PR against any branch
+triggers `bundle destroy` on a pipeline that was never deployed.
+
+Pattern: every CI workflow that has a deploy step needs a matching cleanup — and
+both must share the same branch scope.
