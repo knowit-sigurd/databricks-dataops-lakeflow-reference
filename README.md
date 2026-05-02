@@ -55,6 +55,7 @@ scripts/upload_data.sh dev
 | Trigger          | Workflow       | What happens                                  |
 |------------------|----------------|-----------------------------------------------|
 | Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to dev            |
+| PR closed        | Cleanup        | Destroy `pr_<n>_medallion_pipeline` from dev  |
 | Push to main     | Deploy         | Deploy `prod` target to production            |
 | Manual dispatch  | Deploy         | Deploy to chosen target (dev/test)            |
 
@@ -93,5 +94,23 @@ In client production environments, destructive bundle changes should be reviewed
 
 ## Cleanup
 
-PR-scoped pipelines (`pr_<n>_medallion_pipeline`) are not automatically removed after merge.
-Manual cleanup in the Databricks workspace is currently required.
+When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automatically runs
+`databricks bundle destroy` against the `dev` target with the matching `deployment_suffix`.
+This removes the `pr_<n>_medallion_pipeline` from the Databricks workspace without requiring
+manual intervention.
+
+
+## Final milestone status
+
+Repo now have:
+
+✔ SDP pipelines
+✔ Local dev
+✔ CI
+✔ CD
+✔ PR-based pipelines
+✔ Prod pipeline
+✔ Data ingestion
+✔ Gold layer
+✔ Rejected rows
+✔ Automatic cleanup
