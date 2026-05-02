@@ -1,4 +1,5 @@
 import dlt
+from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
 from orders import (
     enrich_orders,
@@ -11,6 +12,13 @@ source_path = spark.conf.get("source_path", "./data")
 
 expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 
+ORDERS_SCHEMA = StructType([
+    StructField("order_id", LongType(), True),
+    StructField("customer_id", LongType(), True),
+    StructField("amount", DoubleType(), True),
+    StructField("city", StringType(), True),
+])
+
 
 @dlt.table(
     name="orders_bronze",
@@ -19,7 +27,7 @@ expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 def orders_bronze():
     return (
         spark.read.option("header", True)
-        .option("inferSchema", True)
+        .schema(ORDERS_SCHEMA)
         .csv(f"{source_path}/orders.csv")
     )
 
