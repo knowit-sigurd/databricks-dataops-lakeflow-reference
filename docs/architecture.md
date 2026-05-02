@@ -93,6 +93,10 @@ PR opened
   → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n>
   → creates pr_<n>_medallion_pipeline
 
+PR closed (merged or abandoned)
+  → databricks bundle destroy -t dev --var=deployment_suffix=pr_<n>
+  → removes pr_<n>_medallion_pipeline from workspace
+
 Merged to main
   → upload_data.sh prod
   → databricks bundle deploy -t prod --var=deployment_suffix=prod
@@ -127,5 +131,4 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 
 ## Known limitations
 
-- PR-scoped pipelines are not automatically removed after merge — manual cleanup required.
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.
