@@ -132,3 +132,6 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 ## Known limitations
 
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.
+
+This repo currently uses the legacy dlt Python module, which remains supported in Lakeflow SDP.
+Migration to pyspark.pipelines is tracked as future API modernization, not required for this milestone.
