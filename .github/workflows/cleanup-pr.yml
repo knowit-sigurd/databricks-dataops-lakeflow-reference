@@ -1,0 +1,40 @@
+name: Cleanup PR Pipelines
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Validate PR context
+        run: |
+          if [ -z "${{ github.event.number }}" ]; then
+            echo "No PR number found, aborting cleanup"
+            exit 1
+          fi
+
+      - name: Print cleanup context
+        run: |
+          echo "Cleaning pipeline for PR: ${{ github.event.number }}"
+          echo "Suffix: pr_${{ github.event.number }}"
+
+      - name: Destroy PR pipeline
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks bundle destroy \
+            -t dev \
+            --var=deployment_suffix=pr_${{ github.event.number }} \
+            --auto-approve

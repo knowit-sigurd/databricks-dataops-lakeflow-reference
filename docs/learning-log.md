@@ -1571,7 +1571,7 @@ Remaining gaps:
 - add gold layer
 - define how rejected rows should be monitored or consumed
 
-## 2026-05-01 ## Milestone 4 – Gold layer and cross-pipeline dependencies
+## 2026-05-01 Milestone 4 – Gold layer and cross-pipeline dependencies
 
 ### What I observed
 I extended the SDP pipelines with a Gold layer and introduced cross-table dependencies.
@@ -1614,3 +1614,47 @@ Remaining gaps:
 - define strategy for rejected data handling in production
 - implement PR pipeline cleanup automation
 - refine deployment approval strategy for production environments
+
+## 2026-05-02 Milestone 5 – PR pipeline cleanup automation
+
+### What I observed
+I implemented automated cleanup of PR pipelines using GitHub Actions.
+
+- pipelines are created per PR
+- pipelines are removed automatically when the PR is closed
+- legacy manually created pipelines had to be removed separately
+
+The cleanup workflow uses `databricks bundle destroy` with the same deployment suffix used during pipeline creation.
+
+### What I learned
+PR-based pipelines require full lifecycle management, not just deployment.
+
+Without cleanup:
+- pipelines accumulate
+- workspace becomes cluttered
+- operational clarity is reduced
+
+I also learned that:
+- bundle-managed pipelines should be the only pipelines in the workspace
+- cleanup must align with deployment naming
+- `--auto-approve` is acceptable for temporary resources but requires caution
+
+### Practical conclusion
+For SDP pipelines:
+- use PR-based deployment for validation
+- automate cleanup on PR close
+- ensure deployment and cleanup use consistent naming
+
+This ensures a clean, predictable workspace and a complete pipeline lifecycle.
+
+### Current position
+I now have:
+- PR-based pipeline deployment
+- automated cleanup of temporary pipelines
+- consistent naming and lifecycle management
+- clean workspace after PR closure
+
+Remaining gaps:
+- optional cleanup of schemas or temporary data
+- further hardening of production deployment
+- monitoring and alerting integration
