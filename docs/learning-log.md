@@ -1702,3 +1702,17 @@ Added `databricks bundle run` after `bundle deploy` for PR events. CI now execut
 
 ## Milestone 8 Item 2 — Row count assertions after pipeline run
 Added `scripts/validate_counts.py` which queries all 7 tables via Databricks SDK statement execution API and asserts expected counts from the fixture CSVs. Called from CI after `bundle run`. A pipeline that runs but produces wrong output now fails the PR. Expected counts: customers_bronze=3, customers_silver=2 (1 rejected), orders_bronze=4, orders_silver=3 (1 rejected), customer_order_summary=2 (customer 99 has no silver match). Service principal requires explicit "Can use" permission on the SQL warehouse — not granted by default even for workspace admins. Real lesson: exit code 0 from a pipeline run proves execution completed, not that the data is correct — row counts are the minimum bar for data correctness.
+
+## Milestone 9 — Rules as single source of truth / expectation bypass fix
+
+**What I built:** Defined `CUSTOMER_RULES` and `ORDER_RULES` as dicts in `customers.py` / `orders.py`. Pipeline decorators, rejected-row logic, and tests all derive from the same dict. Removed the `valid_customers` / `valid_orders` pre-filter bypass that was silencing the expectation engine in dev/PR mode.
+
+**The problem it fixed:** `expect_or_drop` was never seeing invalid rows — they were filtered before the expectation ran. DLT reported 100% pass rate on clean data. Quality metrics were meaningless.
+
+**Key insight:** DLT expectation metrics are the observable signal for data quality in a SDP pipeline. If you pre-filter before the expectation, you destroy that signal. The expectation engine must see the invalid rows to count and route them correctly.
+
+**Rejected-row derivation:** `~F.expr(sql)` inverts a SQL condition into a filter for the rejected table. `CUSTOMER_RULES.items()` drives both the `@expect_fn` decorators and the rejection filter — one change propagates everywhere.
+
+**Orders rules expanded:** Added `valid_order_id` and `valid_customer_id` to `ORDER_RULES`, bringing orders to parity with customers. No fixture rows have null order_id or customer_id, so row counts in CI are unaffected.
+
+**Scope boundary held:** Rules as plain dicts with string values. No `Rule` dataclass, no generic `validate_dataframe` helper, no YAML loading. Adding abstraction here is the v2 trap.

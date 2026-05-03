@@ -1,11 +1,7 @@
 import dlt
 from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
 
-from orders import (
-    enrich_orders,
-    valid_orders,
-    rejected_orders,
-)
+from orders import ORDER_RULES, enrich_orders, rejected_orders
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
@@ -20,10 +16,7 @@ ORDERS_SCHEMA = StructType([
 ])
 
 
-@dlt.table(
-    name="orders_bronze",
-    comment="Raw orders data",
-)
+@dlt.table(name="orders_bronze", comment="Raw orders data")
 def orders_bronze():
     return (
         spark.read.option("header", True)
@@ -32,28 +25,14 @@ def orders_bronze():
     )
 
 
-@dlt.table(
-    name="orders_silver",
-    comment="Validated orders",
-)
-@expect_fn("valid_amount", "amount IS NOT NULL")
+@dlt.table(name="orders_silver", comment="Validated orders")
+@expect_fn("valid_order_id", ORDER_RULES["valid_order_id"])
+@expect_fn("valid_customer_id", ORDER_RULES["valid_customer_id"])
+@expect_fn("valid_amount", ORDER_RULES["valid_amount"])
 def orders_silver():
-    df = dlt.read("orders_bronze")
-
-    if quality_mode == "fail":
-        # In prod, let expect_or_fail enforce validity.
-        # Do not pre-filter, otherwise the expectation never fails.
-        return enrich_orders(df)
-
-    # In dev / PR, keep silver clean while allowing the pipeline to succeed.
-    return enrich_orders(valid_orders(df))
+    return enrich_orders(dlt.read("orders_bronze"))
 
 
-@dlt.table(
-    name="orders_rejected",
-    comment="Rejected orders with reason",
-)
+@dlt.table(name="orders_rejected", comment="Rejected orders with reason")
 def orders_rejected():
-    df = dlt.read("orders_bronze")
-
-    return rejected_orders(df)
+    return rejected_orders(dlt.read("orders_bronze"))
