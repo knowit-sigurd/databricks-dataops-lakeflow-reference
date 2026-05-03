@@ -98,3 +98,14 @@ jobs:
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
             --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
             --refresh-all
+
+      - name: Assert row counts
+        if: github.event_name == 'pull_request'
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+          DATABRICKS_WAREHOUSE_ID: ${{ secrets.DATABRICKS_WAREHOUSE_ID }}
+        run: |
+          pip install databricks-sdk --quiet
+          python scripts/validate_counts.py ${{ steps.resolve_context.outputs.target_schema }}
