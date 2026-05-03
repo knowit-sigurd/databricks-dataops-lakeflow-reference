@@ -19,8 +19,8 @@ Pipelines are defined declaratively in Python using the `dlt` library and deploy
 as Databricks Asset Bundles. Promotion is controlled entirely through Git.
 
 ```
-PR opened       →  deploys pr_<number>_medallion_pipeline to dev  (quality_mode: drop)
-Merged to main  →  deploys prod_medallion_pipeline to prod        (quality_mode: fail)
+PR opened       →  deploys pr_<n>_medallion_pipeline to sdp_pr_<n>  (quality_mode: drop)
+Merged to main  →  deploys prod_medallion_pipeline to sdp_prod       (quality_mode: fail)
 ```
 
 Schemas are also environment-scoped:
@@ -98,23 +98,16 @@ In client production environments, destructive bundle changes should be reviewed
 
 ## Cleanup
 
-When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automatically runs
-`databricks bundle destroy` against the `dev` target with the matching `deployment_suffix`.
-This removes the `pr_<n>_medallion_pipeline` from the Databricks workspace without requiring
-manual intervention.
+When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automatically:
+1. Runs `databricks bundle destroy` to remove `pr_<n>_medallion_pipeline` from the workspace
+2. Drops the `dataops_lab.sdp_pr_<n>` Unity Catalog schema and all its tables
 
 
-## Final milestone status
+## Known limitations
 
-Repo now have:
-
-✔ SDP pipelines
-✔ Local dev
-✔ CI
-✔ CD
-✔ PR-based pipelines
-✔ Prod pipeline
-✔ Data ingestion
-✔ Gold layer
-✔ Rejected rows
-✔ Automatic cleanup
+- No staging environment. A true staging target requires a separate workspace or UC catalog.
+  Current model: PR → `sdp_pr_<n>`, main → `sdp_prod`. No intermediate environment.
+- `upload_data.sh prod` seeds fixture CSVs into `sdp_prod/raw` during prod deploy.
+  In a production project this volume would be populated by Auto Loader, not CI scripts.
+- Deploy workflow runs `bundle deploy` only — it does not trigger or validate pipeline execution.
+  CI proves the bundle config is valid, not that the pipeline produces correct output.

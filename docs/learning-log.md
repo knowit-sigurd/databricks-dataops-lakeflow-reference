@@ -1693,3 +1693,6 @@ All PR deploys previously wrote to dataops_lab.sdp_dev.*, meaning concurrent PRs
 
 ## Milestone 7 Item 5 — Source path isolation documented as deliberate choice
 All PR deployments share /Volumes/dataops_lab/sdp_dev/raw. Documented this as intentional: source data is static CSV fixtures, contention is on outputs not inputs, and output isolation (schema-per-PR from Item 4) is what matters. Also documented that upload_data.sh prod seeding sdp_prod/raw during deploy is a demo convenience — in a real project the production volume would be populated by Auto Loader, not CI scripts. Updated architecture.md (environment table, deployment model block, Known Limitations) and README.md (environment table, CI/CD table) to reflect the current honest state of the repo. Real lesson: stating what you deliberately did NOT do is as important as stating what you did.
+
+## Milestone 7 Item 6 — README honest promotion model and known limitations
+Fixed the "How it works" promotion description to show sdp_pr_<n> and sdp_prod instead of dev. Updated the Cleanup section to include schema drop. Replaced the stale "Final milestone status" block with a Known Limitations section. Real lesson: a README that describes the state from two milestones ago is worse than no README — it actively misleads readers about what the repo does.
