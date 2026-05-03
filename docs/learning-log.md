@@ -1716,3 +1716,12 @@ Added `scripts/validate_counts.py` which queries all 7 tables via Databricks SDK
 **Orders rules expanded:** Added `valid_order_id` and `valid_customer_id` to `ORDER_RULES`, bringing orders to parity with customers. No fixture rows have null order_id or customer_id, so row counts in CI are unaffected.
 
 **Scope boundary held:** Rules as plain dicts with string values. No `Rule` dataclass, no generic `validate_dataframe` helper, no YAML loading. Adding abstraction here is the v2 trap.
+
+## Post-M9 hotfix — PR schema cleanup was silently failing
+
+After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still visible in the catalog UI. Two bugs in `cleanup-pr.yml`:
+
+1. `databricks schemas delete` was called without `--force` — the CLI refuses to drop a non-empty schema without it, and `|| true` swallowed the error silently so CI showed green.
+2. The command was missing `-t dev` — inside a bundle directory the CLI requires a target to resolve the workspace host, same as `databricks fs cp` (re-learned from M7).
+
+Fixed both flags in the cleanup workflow and deleted the three stale schemas manually. Real lesson: `|| true` on a cleanup step hides failures permanently — if cleanup is load-bearing, check it actually ran by inspecting the catalog after the first real PR close.
