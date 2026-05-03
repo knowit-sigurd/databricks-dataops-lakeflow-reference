@@ -140,6 +140,7 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 - Source volume is shared across all PR deployments (`sdp_dev/raw`). This is intentional: source data is static CSV fixtures. Isolation is on the output side (schema-per-PR).
 - `upload_data.sh prod` seeds fixture CSVs into `sdp_prod/raw` during prod deploy. This is a demo convenience. In a production project, this volume would be populated by Auto Loader or a separate data ingestion process — not by CI deployment scripts.
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
+- CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
 
 This repo currently uses the legacy dlt Python module, which remains supported in Lakeflow SDP.
 Migration to pyspark.pipelines is tracked as future API modernization, not required for this milestone.
