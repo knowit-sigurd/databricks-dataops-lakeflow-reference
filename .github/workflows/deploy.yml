@@ -32,12 +32,15 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "target=dev" >> $GITHUB_OUTPUT
             echo "deployment_suffix=pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
+            echo "target_schema=sdp_pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "main" ]; then
             echo "target=prod" >> $GITHUB_OUTPUT
             echo "deployment_suffix=prod" >> $GITHUB_OUTPUT
+            echo "target_schema=sdp_prod" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
             echo "deployment_suffix=${{ inputs.target }}" >> $GITHUB_OUTPUT
+            echo "target_schema=sdp_dev" >> $GITHUB_OUTPUT
           else
             echo "Unsupported event/ref combination"
             echo "event=${{ github.event_name }}"
@@ -69,13 +72,16 @@ jobs:
         run: |
           databricks bundle validate \
             -t ${{ steps.resolve_context.outputs.target }} \
-            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }}
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }}
 
           databricks bundle plan \
             -t ${{ steps.resolve_context.outputs.target }} \
-            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }}
-            
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }}
+
           databricks bundle deploy \
             -t ${{ steps.resolve_context.outputs.target }} \
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
             --auto-approve
