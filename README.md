@@ -10,7 +10,7 @@ pipelines/          # DLT pipeline definitions (customer, orders, gold)
 tests/              # Smoke tests (pytest)
 scripts/            # Local dev utilities (upload_data.sh)
 .github/workflows/  # CI and deploy pipelines
-databricks.yml      # Bundle config (targets: dev, test, prod)
+databricks.yml      # Bundle config (targets: dev, prod)
 ```
 
 ## How it works
@@ -25,10 +25,14 @@ Merged to main  →  deploys prod_medallion_pipeline to prod        (quality_mod
 
 Schemas are also environment-scoped:
 
-| Target | Schema   | Source volume                      | On bad rows                |
-|--------|----------|------------------------------------|----------------------------|
-| dev/PR | sdp_dev  | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
-| prod   | sdp_prod | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
+| Target     | Schema     | Source volume                      | On bad rows                |
+|------------|------------|------------------------------------|----------------------------|
+| PR         | sdp_pr_<n> | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
+| dev        | sdp_dev    | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
+| prod       | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
+
+PR deployments share the `sdp_dev` source volume — source data is static CSV fixtures,
+so input isolation is not needed. Output isolation (schema-per-PR) prevents contention.
 
 
 ## Local development workflow
@@ -54,10 +58,10 @@ scripts/upload_data.sh dev
 
 | Trigger          | Workflow       | What happens                                  |
 |------------------|----------------|-----------------------------------------------|
-| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to dev            |
-| PR closed        | Cleanup        | Destroy `pr_<n>_medallion_pipeline` from dev  |
+| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`  |
+| PR closed        | Cleanup        | Destroy pipeline and drop `sdp_pr_<n>` schema |
 | Push to main     | Deploy         | Deploy `prod` target to production            |
-| Manual dispatch  | Deploy         | Deploy to chosen target (dev/test)            |
+| Manual dispatch  | Deploy         | Deploy to chosen target (dev)                 |
 
 The deploy workflow uploads source data to the target volume before running `bundle deploy`.
 

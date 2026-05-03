@@ -73,14 +73,18 @@ pipelines.numUpdateRetryAttempts: "0"
 Environments are defined as targets in `databricks.yml`.
 Schema, source volume, and quality behavior are scoped per target.
 
-| Target | Schema   | Source volume                     | quality_mode | Retries |
-|--------|----------|-----------------------------------|--------------|---------|
-| dev    | sdp_dev  | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
-| test   | sdp_dev  | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
-| prod   | sdp_prod | /Volumes/dataops_lab/sdp_prod/raw | fail         | 0       |
+| Target | Schema     | Source volume                     | quality_mode | Retries |
+|--------|------------|-----------------------------------|--------------|---------|
+| PR     | sdp_pr_<n> | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
+| dev    | sdp_dev    | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
+| prod   | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw | fail         | 0       |
 
-PR-based deployments use `deployment_suffix=pr_<n>` and write to `sdp_dev`,
-giving each PR isolated pipeline names without schema isolation.
+PR-based deployments use `deployment_suffix=pr_<n>` and `target_schema=sdp_pr_<n>`,
+giving each PR an isolated pipeline name and an isolated Unity Catalog schema.
+
+All PR deployments share `/Volumes/dataops_lab/sdp_dev/raw` as the source volume.
+This is deliberate: source data is static CSV fixtures that do not vary between PRs.
+Input isolation is not needed; output isolation (schema-per-PR) prevents contention.
 
 ## Deployment model
 
@@ -90,17 +94,18 @@ Source data is uploaded to the target volume before bundle deployment.
 ```
 PR opened
   → upload_data.sh dev
-  → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n>
-  → creates pr_<n>_medallion_pipeline
+  → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n> --var=target_schema=sdp_pr_<n>
+  → creates pr_<n>_medallion_pipeline writing to dataops_lab.sdp_pr_<n>
 
 PR closed (merged or abandoned)
   → databricks bundle destroy -t dev --var=deployment_suffix=pr_<n>
-  → removes pr_<n>_medallion_pipeline from workspace
+  → databricks schemas delete dataops_lab.sdp_pr_<n>
+  → removes pipeline resource and UC schema
 
 Merged to main
   → upload_data.sh prod
   → databricks bundle deploy -t prod --var=deployment_suffix=prod
-  → updates prod_medallion_pipeline
+  → updates prod_medallion_pipeline writing to dataops_lab.sdp_prod
 ```
 
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
@@ -132,6 +137,9 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 ## Known limitations
 
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.
+- Source volume is shared across all PR deployments (`sdp_dev/raw`). This is intentional: source data is static CSV fixtures. Isolation is on the output side (schema-per-PR).
+- `upload_data.sh prod` seeds fixture CSVs into `sdp_prod/raw` during prod deploy. This is a demo convenience. In a production project, this volume would be populated by Auto Loader or a separate data ingestion process — not by CI deployment scripts.
+- Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 
 This repo currently uses the legacy dlt Python module, which remains supported in Lakeflow SDP.
 Migration to pyspark.pipelines is tracked as future API modernization, not required for this milestone.
