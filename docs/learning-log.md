@@ -1696,3 +1696,6 @@ All PR deployments share /Volumes/dataops_lab/sdp_dev/raw. Documented this as in
 
 ## Milestone 7 Item 6 — README honest promotion model and known limitations
 Fixed the "How it works" promotion description to show sdp_pr_<n> and sdp_prod instead of dev. Updated the Cleanup section to include schema drop. Replaced the stale "Final milestone status" block with a Known Limitations section. Real lesson: a README that describes the state from two milestones ago is worse than no README — it actively misleads readers about what the repo does.
+
+## Milestone 8 Item 1 — Pipeline execution in CI
+Added `databricks bundle run` after `bundle deploy` for PR events. CI now executes the pipeline and fails the PR if the pipeline update fails. Before this, CI proved only that the bundle config deployed — not that the pipeline ran. `--refresh-all` forces a clean read of fixture data each run. Scoped to PR events only: prod pipeline is managed by the deployment itself. `bundle validate`, `bundle plan`, and `bundle deploy` were already in place; `bundle run` is the step that closes the gap between "config is valid" and "pipeline actually works". Real lesson: a deploy step that never executes the thing it deploys is not CI — it is just syntax checking.

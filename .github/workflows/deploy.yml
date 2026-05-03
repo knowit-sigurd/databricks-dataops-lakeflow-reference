@@ -85,3 +85,16 @@ jobs:
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
             --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
             --auto-approve
+
+      - name: Run pipeline
+        if: github.event_name == 'pull_request'
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks bundle run medallion_pipeline \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
+            --refresh-all
