@@ -46,4 +46,4 @@ jobs:
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
-          databricks schemas delete dataops_lab.sdp_pr_${{ github.event.number }} --cascade || true
+          databricks schemas delete dataops_lab.sdp_pr_${{ github.event.number }} --force || true
