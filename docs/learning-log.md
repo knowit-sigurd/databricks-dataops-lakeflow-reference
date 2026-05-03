@@ -1677,3 +1677,10 @@ triggers `bundle destroy` on a pipeline that was never deployed.
 
 Pattern: every CI workflow that has a deploy step needs a matching cleanup — and
 both must share the same branch scope.
+
+
+## 2026-05-03 Milestone 7 Item 1 — Removed vestigial test target
+The test target in databricks.yml was identical to dev: same workspace, same schema, no behavioral difference. Keeping it implied a staging environment that didn't exist. Removed it from databricks.yml, deploy.yml, and upload_data.sh. Real projects either have a true staging workspace (separate UC catalog/workspace) or they don't — they don't pretend.
+
+## Milestone 7 Item 2 — Fixed invalid -t flag in upload_data.sh
+databricks fs cp does not accept a -t <target> flag — that flag belongs to bundle deploy. The destination volume path already encodes the environment; -t was redundant and broken. Removed from both cp calls. In real projects, CI data seeding failures are easy to miss if the pipeline still runs (just on stale data) — this kind of bug can cause silent test failures.
