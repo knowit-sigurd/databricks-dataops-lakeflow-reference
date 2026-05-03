@@ -1,7 +1,7 @@
 import dlt
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
-from customers import CUSTOMER_RULES, enrich_customers, rejected_customers, standardize_customers
+from customers import CUSTOMER_RULES, enrich_customers, rejected_customers
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
