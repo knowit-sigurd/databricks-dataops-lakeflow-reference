@@ -18,7 +18,7 @@ esac
 
 echo "Uploading data files to $VOLUME..."
 
-databricks fs cp data/customers.csv "$VOLUME/customers.csv" --overwrite -t "$TARGET"
-databricks fs cp data/orders.csv "$VOLUME/orders.csv" --overwrite -t "$TARGET"
+databricks fs cp data/customers.csv "$VOLUME/customers.csv" --overwrite 
+databricks fs cp data/orders.csv "$VOLUME/orders.csv" --overwrite 
 
 echo "Done."
