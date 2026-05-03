@@ -7,11 +7,11 @@ case "$TARGET" in
   prod)
     VOLUME="dbfs:/Volumes/dataops_lab/sdp_prod/raw"
     ;;
-  dev|test)
+  dev)
     VOLUME="dbfs:/Volumes/dataops_lab/sdp_dev/raw"
     ;;
   *)
-    echo "Usage: $0 [dev|test|prod]"
+    echo "Usage: $0 [dev|prod]"
     exit 1
     ;;
 esac
