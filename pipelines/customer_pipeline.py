@@ -1,12 +1,7 @@
 import dlt
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
-from customers import (
-    enrich_customers,
-    standardize_customers,
-    valid_customers,
-    rejected_customers,
-)
+from customers import CUSTOMER_RULES, enrich_customers, rejected_customers
 
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
@@ -20,43 +15,22 @@ CUSTOMERS_SCHEMA = StructType([
 ])
 
 
-@dlt.table(
-    name="customers_bronze",
-    comment="Raw customer data",
-)
+@dlt.table(name="customers_bronze", comment="Raw customer data")
 def customers_bronze():
-    df = (
+    return (
         spark.read.option("header", True)
         .schema(CUSTOMERS_SCHEMA)
         .csv(f"{source_path}/customers.csv")
     )
 
-    return standardize_customers(df)
 
-
-@dlt.table(
-    name="customers_silver",
-    comment="Validated customers",
-)
-@expect_fn("valid_customer_id", "customer_id IS NOT NULL")
-@expect_fn("valid_customer_name", "customer_name IS NOT NULL")
+@dlt.table(name="customers_silver", comment="Validated customers")
+@expect_fn("valid_customer_id", CUSTOMER_RULES["valid_customer_id"])
+@expect_fn("valid_customer_name", CUSTOMER_RULES["valid_customer_name"])
 def customers_silver():
-    df = dlt.read("customers_bronze")
-
-    if quality_mode == "fail":
-        # In prod, let expect_or_fail enforce validity.
-        # Do not pre-filter, otherwise the expectation never fails.
-        return enrich_customers(df)
-
-    # In dev / PR, keep silver clean while allowing the pipeline to succeed.
-    return enrich_customers(valid_customers(df))
+    return enrich_customers(dlt.read("customers_bronze"))
 
 
-@dlt.table(
-    name="customers_rejected",
-    comment="Rejected customer rows with reason",
-)
+@dlt.table(name="customers_rejected", comment="Rejected customer rows with reason")
 def customers_rejected():
-    df = dlt.read("customers_bronze")
-
-    return rejected_customers(df)
+    return rejected_customers(dlt.read("customers_bronze"))
