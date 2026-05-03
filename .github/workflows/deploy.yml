@@ -12,7 +12,7 @@ on:
         required: true
         default: dev
         type: choice
-        options: [dev, test]
+        options: [dev]
 
 jobs:
   deploy:
