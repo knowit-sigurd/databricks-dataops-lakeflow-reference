@@ -1,5 +1,5 @@
 import dlt
-from pyspark.sql.types import DoubleType, LongType, StringType, StructField, StructType
+from pyspark.sql.types import DecimalType, LongType, StringType, StructField, StructType
 
 from orders import ORDER_RULES, enrich_orders, rejected_orders
 
@@ -11,7 +11,7 @@ expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
 ORDERS_SCHEMA = StructType([
     StructField("order_id", LongType(), True),
     StructField("customer_id", LongType(), True),
-    StructField("amount", DoubleType(), True),
+    StructField("amount", DecimalType(10, 2), True),
     StructField("city", StringType(), True),
 ])
 
