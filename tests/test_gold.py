@@ -29,3 +29,14 @@ def test_build_customer_order_summary(spark):
     assert result[2]["order_count"] == 1
     assert result[2]["total_amount"] == 300
     assert 99 not in result
+
+
+def test_customer_order_summary_excludes_customer_email(spark):
+    customers = spark.createDataFrame(
+        [Row(customer_id=1, customer_name="Alice", city="Oslo", region="NO", customer_email="alice@example.com")]
+    )
+    orders = spark.createDataFrame(
+        [Row(order_id=1, customer_id=1, amount=100, city="Oslo", region="NO")]
+    )
+    result = build_customer_order_summary(customers, orders)
+    assert "customer_email" not in result.columns
