@@ -15,7 +15,7 @@ def build_customer_order_summary(
     )
 
     return (
-        customers_df.join(order_summary, on="customer_id", how="inner")
+        customers_df.join(order_summary, on="customer_id", how="left")
         # Explicit select is the schema promotion gate — new silver columns are not
         # included in gold unless there is a business output requirement for them.
         .select(
@@ -23,7 +23,7 @@ def build_customer_order_summary(
             "customer_name",
             "city",
             "region",
-            "order_count",
-            "total_amount",
+            F.coalesce(F.col("order_count"), F.lit(0)).alias("order_count"),
+            F.coalesce(F.col("total_amount"), F.lit(0.0)).alias("total_amount"),
         )
     )
