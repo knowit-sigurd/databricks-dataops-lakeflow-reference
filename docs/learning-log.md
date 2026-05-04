@@ -1739,6 +1739,14 @@ Two correctness gaps closed.
 
 **`standardize_customers` was defined, tested, and never called.** The trim on `customer_name` and `city` was flowing through the test suite cleanly while the pipeline was shipping untrimmed data. Wired it into `customers_silver` by chaining `standardize_customers` before `enrich_customers` in the silver table function. Real lesson: a unit test on an isolated function proves the function works — it does not prove the function is called.
 
+## Milestone 12 — DecimalType for amount
+
+Changed `ORDERS_SCHEMA` `amount` field from `DoubleType` to `DecimalType(10,2)`. `DoubleType` is IEEE 754 floating point — rounding error accumulates across arithmetic operations on financial values. `DecimalType` is exact. This was documented as a known gap since M6.
+
+The explicit `StructType` declaration from M6 is what makes this a safe, one-line change: the type contract is declared in one place, enforced at ingest, and visible in the Unity Catalog schema. Without explicit schema, this change would require verifying every data path. With it, it is a single reviewed line in a PR.
+
+Verified in Databricks Catalog Explorer: `amount` column type shows as `DECIMAL(10,2)` in both `orders_bronze` and `orders_silver`.
+
 ## Post-M9 hotfix — PR schema cleanup was silently failing
 
 After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still visible in the catalog UI. Two bugs in `cleanup-pr.yml`:

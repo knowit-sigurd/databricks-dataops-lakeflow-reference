@@ -175,6 +175,11 @@ silver only reaches `customer_order_summary` if it is named there. `customer_ema
 available in `customers_silver` for operational consumers but is not a business output
 metric, so it is not promoted to gold.
 
+The change from `DoubleType` to `DecimalType(10,2)` for `amount` is an example of a
+controlled type change: safe here because the explicit `StructType` from M6 makes it
+a single reviewed line, no downstream consumers are broken, and the new type is
+strictly more precise than the old one.
+
 ### Future production hardening
 
 Handling unexpected columns at ingest (schema drift guard), Auto Loader schema evolution
