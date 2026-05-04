@@ -1717,6 +1717,20 @@ Added `scripts/validate_counts.py` which queries all 7 tables via Databricks SDK
 
 **Scope boundary held:** Rules as plain dicts with string values. No `Rule` dataclass, no generic `validate_dataframe` helper, no YAML loading. Adding abstraction here is the v2 trap.
 
+## Milestone 10 — Schema evolution policy and column-add demo
+
+**What I built:** Added `customer_email` to `customers.csv` and `CUSTOMERS_SCHEMA` in `customer_pipeline.py`. Traced it deliberately through the three layers: bronze captures it via the explicit `StructType` declaration; silver promotes it automatically because `enrich_customers` uses `withColumn` (not `select`); gold excludes it because the explicit `.select()` in `build_customer_order_summary` does not name it. Documented the policy in `architecture.md`. Added two tests: one asserting `customer_email` is present in silver output, one asserting it is absent from gold.
+
+**The policy:** Schema changes fall into two categories. Additive nullable columns are safe — declare them in bronze, let them flow to silver, promote to gold only when there is a business output requirement. Everything else (rename, drop, type change) is a breaking change that requires explicit migration. This distinction is what makes a schema change reviewable in a PR rather than a production incident.
+
+**The architectural insight:** The existing code already enforced this correctly without knowing it. Bronze `StructType` is the ingest contract — columns not declared there are silently dropped and never reach silver or gold. Gold's explicit `.select()` is the final promotion gate — new silver columns cannot appear in gold output unless someone deliberately adds them. The milestone made these two invariants visible and machine-verifiable through tests and documentation.
+
+**Validation:** Verified in the Databricks Catalog UI that `customer_email` appears in `customers_bronze` and `customers_silver`, and is absent from `customer_order_summary`. CI passed with all row counts unchanged — adding a column does not change row counts.
+
+**Permissions note:** Browsing PR schema tables in the Catalog UI requires `USE SCHEMA` and `SELECT` granted at the catalog level. Granting on the catalog propagates to all current and future schemas, including dynamically created `sdp_pr_<n>` schemas. One-time setup; in production this would be granted to a group rather than an individual.
+
+**Scope boundary held:** No schema registry, no Auto Loader schema evolution mode, no generic column promotion framework. The `StructType` and `.select()` that were already in the code are the right primitives. Renamed/dropped/type-change patterns are documented in `architecture.md` as breaking changes, not implemented.
+
 ## Post-M9 hotfix — PR schema cleanup was silently failing
 
 After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still visible in the catalog UI. Two bugs in `cleanup-pr.yml`:
