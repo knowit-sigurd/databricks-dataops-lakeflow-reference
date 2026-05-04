@@ -116,6 +116,41 @@ Merged to main
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
 `databricks.yml` stays static — no string manipulation inside bundle configuration.
 
+## Access model
+
+Unity Catalog privileges are not managed by this repo or by `databricks bundle deploy`.
+They require a one-time setup by a workspace admin before the pipeline can be operated
+or browsed by human users. CI runs under a service principal with its own grants.
+
+### Group-based grants (recommended)
+
+Grant to groups, not individual users. Members of the group inherit access automatically.
+
+| Principal | Privilege | Scope | Purpose |
+|-----------|-----------|-------|---------|
+| `data-engineers` | `USE CATALOG`, `USE SCHEMA`, `SELECT` | `dataops_lab` catalog | Browse all schemas and tables, sample data in UI |
+| `data-analysts` | `USE CATALOG`, `USE SCHEMA`, `SELECT` | Gold tables only | Read-only access to `customer_order_summary` |
+| CI service principal | `USE CATALOG`, `USE SCHEMA`, `SELECT`, `CREATE SCHEMA` | `dataops_lab` catalog | Deploy pipeline, run row count assertions |
+| CI service principal | `CAN USE` | SQL warehouse | Required for `validate_counts.py` — not granted by default |
+
+Granting `USE SCHEMA` at the catalog level propagates to all current and future schemas,
+including dynamically created PR schemas (`sdp_pr_<n>`). Without catalog-level grant,
+each new PR schema requires a separate grant — which is not practical.
+
+SQL to set up `data-engineers`:
+```sql
+GRANT USE CATALOG ON CATALOG dataops_lab TO `data-engineers`;
+GRANT USE SCHEMA ON CATALOG dataops_lab TO `data-engineers`;
+GRANT SELECT ON CATALOG dataops_lab TO `data-engineers`;
+```
+
+### What is not covered here
+
+Workspace-level admin roles, entitlement management, and identity federation (SSO/SCIM)
+are IT and platform concerns outside the scope of this DataOps reference. In a client
+deployment, group membership would be managed through the identity provider, not
+configured manually.
+
 ## Deployment approval policy
 
 This reference repo uses `--auto-approve` during bundle deployment to keep PR and demo
