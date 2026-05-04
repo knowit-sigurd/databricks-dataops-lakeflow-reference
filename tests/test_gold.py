@@ -31,6 +31,20 @@ def test_build_customer_order_summary(spark):
     assert 99 not in result
 
 
+def test_customer_with_no_orders_appears_in_summary_with_zero_counts(spark):
+    customers = spark.createDataFrame(
+        [Row(customer_id=3, customer_name="Carol", city="Stockholm", region="UNKNOWN")]
+    )
+    orders = spark.createDataFrame(
+        [],
+        schema="order_id INT, customer_id INT, amount DOUBLE, city STRING, region STRING",
+    )
+    result = build_customer_order_summary(customers, orders).collect()
+    assert len(result) == 1
+    assert result[0]["order_count"] == 0
+    assert result[0]["total_amount"] == 0.0
+
+
 def test_customer_order_summary_excludes_customer_email(spark):
     customers = spark.createDataFrame(
         [Row(customer_id=1, customer_name="Alice", city="Oslo", region="NO", customer_email="alice@example.com")]

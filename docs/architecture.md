@@ -35,6 +35,11 @@ customers_bronze → customers_rejected
 orders_bronze    → orders_rejected
 ```
 
+The gold join is `left` on `customer_id`. All validated silver customers appear in
+`customer_order_summary`. Customers with no orders receive `order_count=0` and
+`total_amount=0.0`. An `inner` join would silently exclude inactive customers from
+reporting — this is treated as data loss, not a valid filter.
+
 Execution order is derived from `dlt.read()` dependencies, not from explicit job sequencing.
 
 ## Code structure
