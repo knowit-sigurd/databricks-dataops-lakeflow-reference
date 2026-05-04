@@ -1731,6 +1731,14 @@ Added `scripts/validate_counts.py` which queries all 7 tables via Databricks SDK
 
 **Scope boundary held:** No schema registry, no Auto Loader schema evolution mode, no generic column promotion framework. The `StructType` and `.select()` that were already in the code are the right primitives. Renamed/dropped/type-change patterns are documented in `architecture.md` as breaking changes, not implemented.
 
+## Milestone 11 — Gold join policy and dead standardization fix
+
+Two correctness gaps closed.
+
+**Gold join changed from inner to left.** An inner join silently excludes customers who have not yet placed orders — they pass silver validation but disappear from reporting. The left join with coalesce (`order_count=0`, `total_amount=0.0`) makes the behaviour unambiguous. The decision is documented in `architecture.md` and machine-verified by a test that constructs a customer with no orders and asserts the expected zero counts.
+
+**`standardize_customers` was defined, tested, and never called.** The trim on `customer_name` and `city` was flowing through the test suite cleanly while the pipeline was shipping untrimmed data. Wired it into `customers_silver` by chaining `standardize_customers` before `enrich_customers` in the silver table function. Real lesson: a unit test on an isolated function proves the function works — it does not prove the function is called.
+
 ## Post-M9 hotfix — PR schema cleanup was silently failing
 
 After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still visible in the catalog UI. Two bugs in `cleanup-pr.yml`:
