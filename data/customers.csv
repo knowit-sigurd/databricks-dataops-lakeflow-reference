@@ -1,4 +1,4 @@
-customer_id,customer_name,city
-1,Alice,Oslo
-2,Bob,Bergen
-3,,Trondheim
+customer_id,customer_name,city,customer_email
+1,Alice,Oslo,alice@example.com
+2,Bob,Bergen,bob@example.com
+3,,Trondheim,

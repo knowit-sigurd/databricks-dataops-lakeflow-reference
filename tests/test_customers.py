@@ -43,6 +43,13 @@ def test_rejected_customers_captures_null_id(spark):
     assert result["rejection_reason"] == "VALID_CUSTOMER_ID"
 
 
+def test_enrich_customers_passes_through_email(spark):
+    df = spark.createDataFrame(
+        [Row(customer_id=1, customer_name="Alice", city="Oslo", customer_email="alice@example.com")]
+    )
+    assert "customer_email" in enrich_customers(df).columns
+
+
 def test_enrich_customers_adds_customer_key_and_region(spark):
     df = spark.createDataFrame(
         [

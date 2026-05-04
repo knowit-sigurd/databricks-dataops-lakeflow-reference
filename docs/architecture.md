@@ -144,3 +144,35 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 
 This repo currently uses the legacy dlt Python module, which remains supported in Lakeflow SDP.
 Migration to pyspark.pipelines is tracked as future API modernization, not required for this milestone.
+
+## Schema evolution
+
+Schema changes are categorized by the risk they carry for downstream consumers.
+
+| Change type         | Safe? | Policy                                                                          |
+|---------------------|-------|---------------------------------------------------------------------------------|
+| New nullable column | Yes   | Add to bronze `StructType`. Promote to silver/gold only by explicit code change. |
+| Renamed column      | No    | Breaking change. Requires compatibility mapping or migration.                   |
+| Dropped column      | No    | Breaking change. Requires downstream impact analysis before removal.            |
+| Type change         | No    | Breaking change. Requires explicit casting or validation.                       |
+
+### Promotion gates
+
+Bronze `StructType` is the contract between source and pipeline. Any column not declared
+there is silently dropped at ingest — it never reaches silver or gold.
+
+Silver inherits all columns from bronze unless a transformation explicitly removes them.
+`enrich_customers` uses `withColumn`, not `select`, so new bronze columns flow through
+to `customers_silver` automatically once declared in the schema.
+
+Gold uses an explicit `.select()`. This is the deliberate promotion gate: a column in
+silver only reaches `customer_order_summary` if it is named there. `customer_email` is
+available in `customers_silver` for operational consumers but is not a business output
+metric, so it is not promoted to gold.
+
+### Future production hardening
+
+Handling unexpected columns at ingest (schema drift guard), Auto Loader schema evolution
+mode, and schema registry integration are production patterns not implemented in this
+reference. They are appropriate when source schemas are truly unknown or when multiple
+upstream teams write to the same volumes.

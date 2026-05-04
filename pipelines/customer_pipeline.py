@@ -12,6 +12,7 @@ CUSTOMERS_SCHEMA = StructType([
     StructField("customer_id", LongType(), True),
     StructField("customer_name", StringType(), True),
     StructField("city", StringType(), True),
+    StructField("customer_email", StringType(), True),
 ])
 
 

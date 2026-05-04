@@ -16,6 +16,8 @@ def build_customer_order_summary(
 
     return (
         customers_df.join(order_summary, on="customer_id", how="inner")
+        # Explicit select is the schema promotion gate — new silver columns are not
+        # included in gold unless there is a business output requirement for them.
         .select(
             "customer_id",
             "customer_name",
