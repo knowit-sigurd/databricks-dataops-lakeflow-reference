@@ -15,3 +15,6 @@ venv/
 
 # Databricks
 .databricks/
+
+# Nested devcontainer repo (separate git repo, not part of this project)
+databricks-dev-container/
