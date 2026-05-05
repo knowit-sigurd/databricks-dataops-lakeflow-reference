@@ -100,17 +100,21 @@ Source data is uploaded to the target volume before bundle deployment.
 PR opened
   → upload_data.sh dev
   → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n> --var=target_schema=sdp_pr_<n>
+  → databricks bundle run medallion_pipeline --refresh-all
+  → validate_counts.py asserts all 7 table row counts via SQL warehouse
   → creates pr_<n>_medallion_pipeline writing to dataops_lab.sdp_pr_<n>
 
 PR closed (merged or abandoned)
   → databricks bundle destroy -t dev --var=deployment_suffix=pr_<n>
-  → databricks schemas delete dataops_lab.sdp_pr_<n>
+  → databricks schemas delete --force dataops_lab.sdp_pr_<n>
   → removes pipeline resource and UC schema
 
 Merged to main
+  → (pauses: GitHub production environment, required reviewer must approve)
   → upload_data.sh prod
   → databricks bundle deploy -t prod --var=deployment_suffix=prod
   → updates prod_medallion_pipeline writing to dataops_lab.sdp_prod
+  → prod pipeline execution is operator-triggered, not CI-triggered
 ```
 
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
@@ -153,11 +157,15 @@ configured manually.
 
 ## Deployment approval policy
 
-This reference repo uses `--auto-approve` during bundle deployment to keep PR and demo
-resources synchronized with the bundle definition.
+PR deployments use `--auto-approve` to keep temporary resources synchronized with
+the bundle definition without manual intervention.
 
-In client production environments, destructive bundle changes should be reviewed through
-`databricks bundle plan`, PR review, and environment protection before deployment.
+Production deployments require explicit approval through the GitHub `production`
+environment. A required reviewer must approve before `deploy-prod` runs. This creates
+an audit trail of who approved each production release and when.
+
+`databricks bundle plan` is run before `bundle deploy` in both jobs, so the resource
+diff is visible in CI logs before any changes are applied.
 
 ## Development workflow
 

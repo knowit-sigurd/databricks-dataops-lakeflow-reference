@@ -56,12 +56,12 @@ scripts/upload_data.sh dev
 
 ## CI/CD
 
-| Trigger          | Workflow       | What happens                                  |
-|------------------|----------------|-----------------------------------------------|
-| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`  |
-| PR closed        | Cleanup        | Destroy pipeline and drop `sdp_pr_<n>` schema |
-| Push to main     | Deploy         | Deploy `prod` target to production            |
-| Manual dispatch  | Deploy         | Deploy to chosen target (dev)                 |
+| Trigger          | Workflow       | What happens                                                             |
+|------------------|----------------|--------------------------------------------------------------------------|
+| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`, run pipeline, assert counts |
+| PR closed        | Cleanup        | Destroy pipeline and drop `sdp_pr_<n>` schema                            |
+| Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod`                       |
+| Manual dispatch  | Deploy         | Deploy to chosen target (dev)                                            |
 
 The deploy workflow uploads source data to the target volume before running `bundle deploy`.
 
@@ -90,11 +90,13 @@ orders_bronze    → orders_silver    ↗
 
 ## Deployment
 
-This reference repo uses `--auto-approve` during bundle deployment to keep PR and demo
-resources synchronized with the bundle definition.
+PR deployments use `--auto-approve` to keep temporary resources synchronized without
+manual intervention.
 
-In client production environments, destructive bundle changes should be reviewed through
-`databricks bundle plan`, PR review, and environment protection before deployment.
+Production deployments require manual approval through the GitHub `production` environment.
+A push to `main` triggers the `deploy-prod` job, which pauses and sends a notification
+to required reviewers before proceeding. This creates an auditable approval record for
+every production release.
 
 ## Cleanup
 
@@ -109,5 +111,6 @@ When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automat
   Current model: PR → `sdp_pr_<n>`, main → `sdp_prod`. No intermediate environment.
 - `upload_data.sh prod` seeds fixture CSVs into `sdp_prod/raw` during prod deploy.
   In a production project this volume would be populated by Auto Loader, not CI scripts.
-- Deploy workflow runs `bundle deploy` only — it does not trigger or validate pipeline execution.
-  CI proves the bundle config is valid, not that the pipeline produces correct output.
+- Production deployment runs `bundle deploy` only — it does not trigger the pipeline or assert
+  row counts. PR deployments do validate execution (pipeline run + row count assertions).
+  Prod pipeline execution is operator-triggered via the Databricks UI or a scheduled job.

@@ -1747,6 +1747,18 @@ The explicit `StructType` declaration from M6 is what makes this a safe, one-lin
 
 Verified in Databricks Catalog Explorer: `amount` column type shows as `DECIMAL(10,2)` in both `orders_bronze` and `orders_silver`.
 
+## 2026-05-05 Milestone 13 — Production approval gate
+
+**What I built:** Split the single `deploy` job into `deploy-pr` (PR and `workflow_dispatch` events, no gate) and `deploy-prod` (push to main, pauses for manual approval). Wired `environment: production` onto `deploy-prod` with a required reviewer in GitHub repo settings. Received the approval email, clicked through, and confirmed prod deployed cleanly end-to-end.
+
+**Also cleaned up:** `databricks-dev-container/` was tracked as a git commit reference (mode `160000`) — a broken gitlink left over from a nested repo that had its own `.git` directory. Files were never pushed (only the commit SHA was stored), but it showed as a broken submodule on GitHub. Removed from the index with `git rm --cached` and added to `.gitignore`.
+
+**Key insight:** `environment: production` on a GitHub Actions job is the minimum viable prod gate. It pauses execution, sends a notification email to required reviewers, and writes an auditable approval record — no custom scripting needed. The gate sits between `push to main` and actual deployment, so merge does not equal deploy.
+
+**Databricks recommendation noted:** `bundle validate` on the prod target recommended setting `workspace.root_path` explicitly to guarantee only one bundle copy is deployed per identity. Noted as a future improvement; not blocking for a single-operator reference lab.
+
+**GitHub plan prerequisite:** Required reviewer environments require a public repo or a paid plan. Made the repo public as part of this milestone — appropriate for a client reference architecture that contains no hardcoded credentials. Confirmed no sensitive content in tracked files before switching visibility.
+
 ## Post-M9 hotfix — PR schema cleanup was silently failing
 
 After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still visible in the catalog UI. Two bugs in `cleanup-pr.yml`:
