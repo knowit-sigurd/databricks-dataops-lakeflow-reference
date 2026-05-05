@@ -182,8 +182,29 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
 
-This repo currently uses the legacy dlt Python module, which remains supported in Lakeflow SDP.
-Migration to pyspark.pipelines is tracked as future API modernization, not required for this milestone.
+This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. See the
+[API migration](#future-api-migration-dlt--pysparkpipelines) section below.
+
+## Future API migration: dlt → pyspark.pipelines
+
+Databricks is standardizing on `pyspark.pipelines` as the canonical module name for
+Lakeflow SDP pipelines. The legacy `dlt` module continues to work in current runtimes,
+but `pyspark.pipelines` is the forward-compatible API.
+
+**What changes:** The migration is a mechanical rename in the pipeline files only.
+All decorators (`@dlt.table`, `@dlt.expect_or_drop`, `@dlt.expect_or_fail`) and
+functions (`dlt.read()`) are identical in both APIs — only the import line changes.
+
+**What does not change:** `databricks.yml`, CI workflows, tests, and logic modules
+are unaffected. The pipeline runtime behavior is identical.
+
+**Prerequisite before migrating:** Confirm the exact import path against the Databricks
+Runtime version in use. The `pyspark.pipelines` namespace was introduced progressively
+and the stable import path must be verified in the target runtime before updating
+pipeline files. A wrong import is a silent deploy-time failure, not a local test failure.
+
+**Scope:** Four files — `customer_pipeline.py`, `orders_pipeline.py`, `gold_pipeline.py`,
+and any future pipeline entrypoints. One import line per file.
 
 ## Schema evolution
 
