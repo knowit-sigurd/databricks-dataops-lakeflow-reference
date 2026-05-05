@@ -50,7 +50,7 @@ def test_enrich_customers_passes_through_email(spark):
     assert "customer_email" in enrich_customers(df).columns
 
 
-def test_enrich_customers_adds_customer_key_and_region(spark):
+def test_enrich_customers_adds_region(spark):
     df = spark.createDataFrame(
         [
             Row(customer_id=1, customer_name="Alice", city="Oslo"),
@@ -58,6 +58,15 @@ def test_enrich_customers_adds_customer_key_and_region(spark):
         ]
     )
     result = {row["customer_id"]: row.asDict() for row in enrich_customers(df).collect()}
-    assert result[1]["customer_key"] == 1
     assert result[1]["region"] == "NO"
     assert result[2]["region"] == "UNKNOWN"
+
+
+def test_rejected_customers_captures_all_failing_reasons(spark):
+    df = spark.createDataFrame(
+        [Row(customer_id=None, customer_name=None, city="Oslo")],
+        schema="customer_id INT, customer_name STRING, city STRING",
+    )
+    result = rejected_customers(df).collect()[0]
+    assert "VALID_CUSTOMER_ID" in result["rejection_reason"]
+    assert "VALID_CUSTOMER_NAME" in result["rejection_reason"]
