@@ -78,6 +78,17 @@ jobs:
             --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
             --auto-approve
 
+      - name: Stop any active pipeline updates
+        if: github.event_name == 'pull_request'
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          pip install databricks-sdk --quiet
+          python scripts/stop_pipeline.py \
+            ${{ steps.resolve_context.outputs.deployment_suffix }}_medallion_pipeline
+
       - name: Run pipeline
         if: github.event_name == 'pull_request'
         env:
