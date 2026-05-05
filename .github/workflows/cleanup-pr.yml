@@ -38,6 +38,7 @@ jobs:
           databricks bundle destroy \
             -t dev \
             --var=deployment_suffix=pr_${{ github.event.number }} \
+            --var=target_schema=sdp_pr_${{ github.event.number }} \
             --auto-approve
 
       - name: Drop PR schema

@@ -1794,3 +1794,17 @@ Fixed both flags in the cleanup workflow and deleted the three stale schemas man
 **Practical conclusion:** Required status checks are the correct architectural fix for workflow race conditions caused by concurrent event handling. Concurrency groups are a workaround for a problem that should not exist. Every PR now must wait for the full Databricks pipeline run (~5 min) before merge is allowed — this is the right tradeoff for a repo where deploy-pr is the primary correctness signal.
 
 **Current position:** `main` requires both `CI / ci` (lint + tests) and `Deploy SDP Pipelines / deploy-pr` (deploy + pipeline run + row counts) to pass before merge. Direct pushes blocked including admins. `architecture.md` updated to reflect both checks as required gates.
+
+
+## M15: DAB State Isolation (2026-05-05)
+
+**What I observed:** With no `root_path` set, all PR deploys wrote to the same bundle state file on the workspace. Closing any PR would destroy whichever pipeline was last deployed, not the one that PR owned. The problem was silent — `bundle destroy` succeeded, just on the wrong target.
+
+**What I learned:** DAB's default state path is shared across all deployments to the same target. `root_path` is the mechanism for isolating it. Without it, parallel PRs are mutually destructive at cleanup time, regardless of how well the pipeline names and schemas are isolated.
+
+**Practical conclusion:** Every multi-branch Databricks bundle needs `root_path` set to a per-deployment path from day one. It is not optional once a second developer or a second open PR exists.
+
+**Current position:** Each deployment writes state to `/Shared/.bundle/dataops-lab-sdp/<target>/<suffix>/`. The `dev` target uses `${var.deployment_suffix}` (resolves to `pr_<n>` for PRs, `dev` for local). The `prod` target uses the literal `prod`. CLI version is pinned to `>= 0.298.0, < 1.0.0`.
+
+**Remaining gaps:** No two-PR isolation test has been run in CI yet — the two-PR proof described in the acceptance criterion requires opening two PRs simultaneously after this merges.
+
