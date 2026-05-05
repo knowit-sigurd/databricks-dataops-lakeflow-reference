@@ -2,7 +2,7 @@ import sys
 import time
 
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.pipelines import GetUpdateResponse, UpdateInfoState
+from databricks.sdk.service.pipelines import UpdateInfoState
 
 TERMINAL_STATES = {
     UpdateInfoState.COMPLETED,
