@@ -8,7 +8,8 @@
   "workspaceFolder": "/workspace/databricks-dev-container",
   "mounts": [
     "source=${localEnv:HOME}/.databrickscfg,target=/home/app/.databrickscfg,type=bind,readonly",
-    "source=${localEnv:HOME}/.databricks,target=/home/app/.databricks,type=bind"
+    "source=${localEnv:HOME}/.databricks,target=/home/app/.databricks,type=bind",
+    "source=${localEnv:HOME}/.claude,target=/home/app/.claude,type=bind"
   ],
   "containerEnv": {
     "DATABRICKS_CONFIG_PROFILE": "sigurd.lislegaard@knowit.no",
@@ -22,7 +23,8 @@
       "extensions": [
         "ms-python.python",
         "charliermarsh.ruff",
-        "usernamehw.errorlens"
+        "usernamehw.errorlens",
+        "anthropic.claude-code"
       ]
     }
   }

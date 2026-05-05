@@ -5,6 +5,8 @@ Pipelines (SDP) and Databricks Asset Bundles (DAB). Demonstrates Git-driven pipe
 promotion, schema-per-PR isolation, data quality enforcement, and a production approval gate
 — all using platform-native capabilities without a custom framework.
 
+For a deeper look at the design decisions, environment model, data quality strategy, and deployment approval policy, see [docs/architecture.md](docs/architecture.md).
+
 ## Project structure
 
 ```
