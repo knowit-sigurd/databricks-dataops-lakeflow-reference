@@ -1747,6 +1747,20 @@ The explicit `StructType` declaration from M6 is what makes this a safe, one-lin
 
 Verified in Databricks Catalog Explorer: `amount` column type shows as `DECIMAL(10,2)` in both `orders_bronze` and `orders_silver`.
 
+## 2026-05-05 Milestone 14 — Monitoring and alerting (documented, not implemented)
+
+Evaluated push-based alerting as a milestone. Decided not to implement it.
+
+**What the repo already covers:** GitHub emails on CI/job failure, the production approval gate creates a mandatory human review before prod runs, Databricks pipeline UI shows execution history and expectation metrics per update, and `validate_counts.py` asserts row correctness on every PR.
+
+**What is genuinely missing:** A prod pipeline triggered outside CI (scheduled run, manual rerun) can fail without anyone knowing. The platform fix is a Databricks notification destination wired to `on-update-failure` — supports Slack, PagerDuty, etc. — but this is workspace admin configuration, not something managed in `databricks.yml` or CI.
+
+**Why not implemented:** This is a single-operator reference lab with static fixture data. Push notifications add operational overhead before there is an operational need. The right time to introduce alerting is when pipelines run on a schedule, source data changes, and consumers need to know when data is stale. Documented the gap and production patterns in `architecture.md` instead.
+
+**Key insight:** Monitoring is an architectural question before it is an implementation question. The right answer depends on who is watching, what they need to know, and how quickly. Adding Slack webhooks to a reference lab answers the "how" before the "why" is established.
+
+**Also added:** Branch protection rules on `main` — requires PR + `CI / ci` passing before merge. Direct pushes blocked for all users including admins. `deploy-pr` runs automatically but is not a required gate (too slow for docs-only changes).
+
 ## Post-M9 hotfix — PR schema cleanup was silently failing
 
 After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still visible in the catalog UI. Two bugs in `cleanup-pr.yml`:
