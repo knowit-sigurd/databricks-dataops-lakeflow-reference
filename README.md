@@ -1,13 +1,15 @@
 # databricks-dataops-lab-sdp
 
-A Databricks-native DataOps project using Lakeflow / Spark Declarative Pipelines (SDP)
-and Databricks Asset Bundles (DAB) to explore Git-driven pipeline promotion.
+A reference architecture for Databricks-native DataOps using Lakeflow / Spark Declarative
+Pipelines (SDP) and Databricks Asset Bundles (DAB). Demonstrates Git-driven pipeline
+promotion, schema-per-PR isolation, data quality enforcement, and a production approval gate
+— all using platform-native capabilities without a custom framework.
 
 ## Project structure
 
 ```
 pipelines/          # DLT pipeline definitions (customer, orders, gold)
-tests/              # Smoke tests (pytest)
+tests/              # Transformation unit tests (pytest)
 scripts/            # Local dev utilities (upload_data.sh)
 .github/workflows/  # CI and deploy pipelines
 databricks.yml      # Bundle config (targets: dev, prod)
@@ -33,7 +35,6 @@ Schemas are also environment-scoped:
 
 PR deployments share the `sdp_dev` source volume — source data is static CSV fixtures,
 so input isolation is not needed. Output isolation (schema-per-PR) prevents contention.
-
 
 ## Local development workflow
 
@@ -66,7 +67,7 @@ scripts/upload_data.sh dev
 The deploy workflow uploads source data to the target volume before running `bundle deploy`.
 
 Databricks credentials are stored as GitHub secrets:
-`DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`.
+`DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_WAREHOUSE_ID`.
 
 ## Pipeline
 
@@ -103,7 +104,6 @@ every production release.
 When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automatically:
 1. Runs `databricks bundle destroy` to remove `pr_<n>_medallion_pipeline` from the workspace
 2. Drops the `dataops_lab.sdp_pr_<n>` Unity Catalog schema and all its tables
-
 
 ## Known limitations
 
