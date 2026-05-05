@@ -15,7 +15,8 @@ on:
         options: [dev]
 
 jobs:
-  deploy:
+  deploy-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -33,19 +34,10 @@ jobs:
             echo "target=dev" >> $GITHUB_OUTPUT
             echo "deployment_suffix=pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
             echo "target_schema=sdp_pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_name }}" == "main" ]; then
-            echo "target=prod" >> $GITHUB_OUTPUT
-            echo "deployment_suffix=prod" >> $GITHUB_OUTPUT
-            echo "target_schema=sdp_prod" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
             echo "deployment_suffix=${{ inputs.target }}" >> $GITHUB_OUTPUT
             echo "target_schema=sdp_dev" >> $GITHUB_OUTPUT
-          else
-            echo "Unsupported event/ref combination"
-            echo "event=${{ github.event_name }}"
-            echo "ref=${{ github.ref_name }}"
-            exit 1
           fi
 
       - name: Print deployment context
@@ -109,3 +101,54 @@ jobs:
         run: |
           pip install databricks-sdk --quiet
           python scripts/validate_counts.py ${{ steps.resolve_context.outputs.target_schema }}
+
+  deploy-prod:
+    if: github.event_name == 'push' && github.ref_name == 'main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Print deployment context
+        run: |
+          echo "Deploying target: prod"
+          echo "Deployment suffix: prod"
+          echo "Git ref: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+
+      - name: Upload source data
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          chmod +x scripts/upload_data.sh
+          ./scripts/upload_data.sh prod
+
+      - name: Deploy bundle
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks bundle validate \
+            -t prod \
+            --var=deployment_suffix=prod \
+            --var=target_schema=sdp_prod
+
+          databricks bundle plan \
+            -t prod \
+            --var=deployment_suffix=prod \
+            --var=target_schema=sdp_prod
+
+          databricks bundle deploy \
+            -t prod \
+            --var=deployment_suffix=prod \
+            --var=target_schema=sdp_prod \
+            --auto-approve
