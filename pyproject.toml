@@ -1,5 +1,5 @@
 [project]
-name = "databricks-dataops-lab-sdp"
+name = "databricks-dataops-lakeflow-reference"
 version = "0.1.0"
 requires-python = ">=3.12"
 

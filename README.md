@@ -1,4 +1,4 @@
-# databricks-dataops-lab-sdp
+# databricks-dataops-lakeflow-reference
 
 A reference architecture for Databricks-native DataOps using Lakeflow / Spark Declarative
 Pipelines (SDP) and Databricks Asset Bundles (DAB). Demonstrates Git-driven pipeline
