@@ -164,15 +164,33 @@ In client production environments, destructive bundle changes should be reviewed
 ```
 Local dev (VS Code + devcontainer)
   ↓  uv run ruff check / pytest
-CI (GitHub Actions)
-  ↓  lint + smoke tests pass
-Deploy (upload_data.sh + databricks bundle deploy)
-  ↓
+Feature branch → PR to main
+  ↓  CI / ci must pass (lint + tests) — required gate
+  ↓  Deploy SDP Pipelines / deploy-pr runs (deploy + pipeline run + row counts) — informational
+Merge to main
+  ↓  deploy-prod triggered, pauses for approval
+  ↓  approved → bundle deploy to sdp_prod
 Databricks pipeline execution (serverless)
 ```
 
 Local Spark (via devcontainer) is used for fast iteration and testing transformation logic.
 Full SDP pipeline execution requires Databricks — local runs cannot replicate expectations behavior.
+
+## Branch protection
+
+The `main` branch requires a pull request before merging. Direct pushes are blocked.
+
+| Rule | Setting |
+|------|---------|
+| Require pull request before merging | Enabled — no approval required (solo repo) |
+| Require status checks to pass | `CI / ci` must pass before merge |
+| Require branches to be up to date | Enabled |
+| Allow bypassing rules | Disabled — applies to admins too |
+
+`Deploy SDP Pipelines / deploy-pr` is not a required gate — it runs automatically but a
+slow or failed deploy does not block merge. `CI / ci` (lint + tests, ~1 min) is the
+mandatory gate because it is always relevant and fast. The deploy check provides
+additional signal without becoming a bottleneck for documentation-only changes.
 
 ## Known limitations
 
