@@ -1810,3 +1810,27 @@ Fixed both flags in the cleanup workflow and deleted the three stale schemas man
 
 **Remaining gaps:** No two-PR isolation test has been run in CI yet — the two-PR proof described in the acceptance criterion requires opening two PRs simultaneously after this merges.
 
+## M16: CI Toolchain Hygiene (2026-05-05)
+
+**What I observed:** `uv.lock` existed but contained only the project entry with no packages. CI was running `uv pip install -r requirements.txt` with four unpinned packages, bypassing the lockfile entirely. Two deploy steps used bare `pip install databricks-sdk` with no version constraint.
+
+**What I learned:** A lockfile only works if the dependency declarations live in `pyproject.toml` — uv has nothing to lock if dependencies are only in `requirements.txt`. `uv sync --frozen` is the correct CI primitive: it fails if the lockfile is absent or stale, so lockfile drift becomes a visible error rather than a silent version drift.
+
+**Practical conclusion:** `requirements.txt` is a legacy artifact when using uv. All dependencies belong in `pyproject.toml` under `[dependency-groups]`. Delete `requirements.txt` once the migration is done — keeping both creates a two-source-of-truth problem.
+
+**Current position:** All Python dependencies declared in `pyproject.toml` under `[dependency-groups] dev`. `uv.lock` contains pinned transitive dependencies. CI installs via `uv sync --frozen`. Databricks CLI pinned to `v0.298.0` in both deploy workflows. `requirements.txt` removed.
+
+**Remaining gaps:** uv installer itself is not pinned — accepted tradeoff. CLI pin is a URL pin to a specific tag, not a hash — acceptable for a reference repo.
+
+
+## M17: Code Credibility Cleanup (2026-05-05)
+
+**What I observed:** `customer_key` was an alias of `customer_id` added in `enrich_customers` with no downstream consumer — it was dropped at the gold join. The rejection logic used a `when().when()` chain (equivalent to SQL `CASE WHEN`), which stops at the first matching condition. A row failing both `valid_customer_id` and `valid_customer_name` produced `rejection_reason = "VALID_CUSTOMER_ID"` only.
+
+**What I learned:** `CASE WHEN` semantics are first-match-wins. Collecting all failing reasons requires evaluating each rule independently and combining the results. `concat_ws` with per-rule `when` expressions is the idiomatic Spark fix — it evaluates every condition, and nulls (passing rules) are silently excluded from the concatenation.
+
+**Practical conclusion:** Rejection tables are only useful for diagnosis if they capture the complete failure picture. First-match-only rejection reason forces analysts to fix and reprocess repeatedly instead of fixing all violations at once.
+
+**Current position:** `customer_key` removed from `enrich_customers`. Both `rejected_customers` and `rejected_orders` now produce comma-separated `rejection_reason` values for multi-rule failures. Tests cover the multi-reason case explicitly.
+
+**Remaining gaps:** `rejection_reason` is a string, not an array — filtering in SQL requires `array_contains(split(...))`. Acceptable for now; a schema change to array type would be M-level work with a clear consumer need.

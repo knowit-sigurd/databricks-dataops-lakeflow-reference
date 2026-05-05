@@ -44,6 +44,16 @@ def test_rejected_orders_captures_null_customer_id(spark):
     assert result["rejection_reason"] == "VALID_CUSTOMER_ID"
 
 
+def test_rejected_orders_captures_all_failing_reasons(spark):
+    df = spark.createDataFrame(
+        [Row(order_id=None, customer_id=1, amount=None, city="Oslo")],
+        schema="order_id INT, customer_id INT, amount INT, city STRING",
+    )
+    result = rejected_orders(df).collect()[0]
+    assert "VALID_ORDER_ID" in result["rejection_reason"]
+    assert "VALID_AMOUNT" in result["rejection_reason"]
+
+
 def test_enrich_orders_adds_region(spark):
     df = spark.createDataFrame(
         [

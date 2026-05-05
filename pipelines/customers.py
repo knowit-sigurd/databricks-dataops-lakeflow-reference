@@ -17,22 +17,20 @@ def standardize_customers(df: DataFrame) -> DataFrame:
 
 
 def rejected_customers(df: DataFrame) -> DataFrame:
-    reject_cond = None
-    reason_expr = None
+    reject_cond = F.lit(False)
+    for sql in CUSTOMER_RULES.values():
+        reject_cond = reject_cond | ~F.expr(sql)
 
-    for name, sql in CUSTOMER_RULES.items():
-        cond = ~F.expr(sql)
-        reject_cond = cond if reject_cond is None else reject_cond | cond
-        if reason_expr is None:
-            reason_expr = F.when(cond, F.lit(name.upper()))
-        else:
-            reason_expr = reason_expr.when(cond, F.lit(name.upper()))
+    reason_parts = [
+        F.when(~F.expr(sql), F.lit(name.upper()))
+        for name, sql in CUSTOMER_RULES.items()
+    ]
 
     return df.filter(reject_cond).withColumn(
         "rejection_reason",
-        reason_expr.otherwise(F.lit("UNKNOWN")),
+        F.concat_ws(", ", *reason_parts),
     )
 
 
 def enrich_customers(df: DataFrame) -> DataFrame:
-    return derive_region(df.withColumn("customer_key", F.col("customer_id")))
+    return derive_region(df)
