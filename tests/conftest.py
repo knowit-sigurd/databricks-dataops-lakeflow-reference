@@ -6,7 +6,7 @@ from pyspark.sql import SparkSession
 def spark():
     session = (
         SparkSession.builder.master("local[1]")
-        .appName("databricks-dataops-lab-sdp-tests")
+        .appName("databricks-dataops-lakeflow-reference-tests")
         .config("spark.ui.enabled", "false")
         .getOrCreate()
     )
