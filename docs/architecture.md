@@ -192,6 +192,47 @@ slow or failed deploy does not block merge. `CI / ci` (lint + tests, ~1 min) is 
 mandatory gate because it is always relevant and fast. The deploy check provides
 additional signal without becoming a bottleneck for documentation-only changes.
 
+## Monitoring and alerting
+
+This repo does not implement push-based alerting. The current observability coverage is:
+
+| Signal | Where to observe |
+|--------|-----------------|
+| CI failure (lint, tests) | GitHub Actions — email notification on failure |
+| PR deployment failure | GitHub Actions — email notification on failure |
+| Prod deployment | GitHub Actions — production approval gate + job result email |
+| Pipeline execution history | Databricks pipeline UI — event log, update history |
+| Data quality metrics | Databricks pipeline UI — expectation pass/fail rates per update |
+| Row count correctness | `validate_counts.py` — asserts on every PR before merge |
+
+### What production monitoring would add
+
+In a client production deployment, the gaps to address are:
+
+**Pipeline runtime alerting** — a prod pipeline triggered outside CI (scheduled run,
+manual rerun) can fail silently. The platform-native fix is a Databricks notification
+destination (webhook) wired to `on-update-failure` in the pipeline settings. This
+supports Slack, PagerDuty, and other targets. Configuration lives in workspace admin
+settings, not in `databricks.yml`.
+
+**Data quality trending** — Databricks Lakehouse Monitoring can track expectation
+pass rates and row count deviation over time, alerting when metrics degrade across
+runs rather than just within a single run. Appropriate when pipelines run on a schedule
+against changing source data.
+
+**Row count deviation thresholds** — replace the hard-coded counts in
+`validate_counts.py` with percentage-based thresholds (e.g. fail if count changes
+more than 20% vs previous run). Requires persisting previous counts — typically a
+Delta table or an external monitoring store.
+
+### Why not implemented here
+
+This is a reference lab with static fixture data and a single operator. Push
+notifications add operational overhead before there is an operational need.
+The right time to introduce alerting is when pipelines run on a schedule,
+source data changes, and there are consumers who need to know when data is stale
+or incorrect.
+
 ## Known limitations
 
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.
