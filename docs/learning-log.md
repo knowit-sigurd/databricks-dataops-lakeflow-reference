@@ -1804,7 +1804,9 @@ Fixed both flags in the cleanup workflow and deleted the three stale schemas man
 
 **Practical conclusion:** Every multi-branch Databricks bundle needs `root_path` set to a per-deployment path from day one. It is not optional once a second developer or a second open PR exists.
 
-**Current position:** Each deployment writes state to `/Shared/.bundle/dataops-lab-sdp/<target>/<suffix>/`. The `dev` target uses `${var.deployment_suffix}` (resolves to `pr_<n>` for PRs, `dev` for local). The `prod` target uses the literal `prod`. CLI version is pinned to `>= 0.298.0, < 1.0.0`.
+**What I observed (during implementation):** Two additional constraints surfaced during validation. First, `mode: development` enforces that `root_path` starts with `~/` or contains the current username — `/Shared/` was rejected with an explicit error. Second, `/Workspace/Shared/` is world-writable in this workspace, meaning any user could overwrite prod bundle state. Both issues pointed to the same fix: use `~/` for both targets. A third minor issue: hardcoding `/prod` as the suffix on the prod target produced a double `prod/prod` path since `${bundle.target}` already resolves to `prod` — removed the trailing literal.
+
+**Current position:** Each deployment writes state under `~/.bundle/dataops-lab-sdp/<target>/`. The `dev` target appends `${var.deployment_suffix}`, resolving to `~/.bundle/dataops-lab-sdp/dev/pr_<n>` in CI and `~/.bundle/dataops-lab-sdp/dev/dev` locally. The `prod` target resolves to `~/.bundle/dataops-lab-sdp/prod`. In both cases `~` expands to the deploying identity's home — the service principal in CI, the user locally. CLI version is pinned to `>= 0.298.0, < 1.0.0`. The vestigial `[tool.setuptools.packages.find]` block is removed from `pyproject.toml`.
 
 **Remaining gaps:** No two-PR isolation test has been run in CI yet — the two-PR proof described in the acceptance criterion requires opening two PRs simultaneously after this merges.
 

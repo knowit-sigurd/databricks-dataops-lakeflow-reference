@@ -25,7 +25,16 @@ jobs:
 
       - name: Install Databricks CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/v0.298.0/install.sh | sh
+
+      - name: Install uv
+        run: |
+          curl -Ls https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
 
       - name: Resolve deployment context
         id: resolve_context
@@ -85,8 +94,7 @@ jobs:
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
-          pip install databricks-sdk --quiet
-          python scripts/stop_pipeline.py \
+          uv run python scripts/stop_pipeline.py \
             ${{ steps.resolve_context.outputs.deployment_suffix }}_medallion_pipeline
 
       - name: Run pipeline
@@ -110,8 +118,7 @@ jobs:
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
           DATABRICKS_WAREHOUSE_ID: ${{ secrets.DATABRICKS_WAREHOUSE_ID }}
         run: |
-          pip install databricks-sdk --quiet
-          python scripts/validate_counts.py ${{ steps.resolve_context.outputs.target_schema }}
+          uv run python scripts/validate_counts.py ${{ steps.resolve_context.outputs.target_schema }}
 
   deploy-prod:
     if: github.event_name == 'push' && github.ref_name == 'main'
@@ -124,7 +131,7 @@ jobs:
 
       - name: Install Databricks CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/v0.298.0/install.sh | sh
 
       - name: Print deployment context
         run: |

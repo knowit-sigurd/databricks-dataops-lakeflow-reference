@@ -19,8 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv venv .venv
-          uv pip install -r requirements.txt
+          uv sync --frozen
 
       - name: Run lint
         run: |
