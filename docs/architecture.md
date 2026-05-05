@@ -214,6 +214,22 @@ This repo does not implement push-based alerting. The current observability cove
 | Pipeline execution history | Databricks pipeline UI — event log, update history |
 | Data quality metrics | Databricks pipeline UI — expectation pass/fail rates per update |
 | Row count correctness | `validate_counts.py` — asserts on every PR before merge |
+| Rejected rows (SQL) | `sql/rejection_summary.sql`, `sql/rejected_rows.sql` — queryable via SQL warehouse |
+
+### Event log observability
+
+The SDP event log (`event_log()` TVF, `system.lakeflow.pipeline_events`) exposes expectation
+pass rates, update durations, and state transitions as queryable SQL. It is the authoritative
+source for what the pipeline UI displays — and the right foundation for a quality dashboard.
+
+Accessing it requires either pipeline ownership permissions (`event_log()` TVF) or system
+tables enabled at the metastore level (`system.lakeflow`). Both require a full enterprise
+workspace with the user as metastore admin. This reference lab runs on a Databricks training
+workspace where the metastore is managed by Databricks — neither is available.
+
+The `sql/` folder contains rejection table queries that surface the same data quality signal
+without special permissions. In a client deployment on a full workspace, replace these with
+`system.lakeflow`-based queries for richer observability across pipeline runs.
 
 ### What production monitoring would add
 
@@ -247,7 +263,7 @@ or incorrect.
 
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.
 - Source volume is shared across all PR deployments (`sdp_dev/raw`). This is intentional: source data is static CSV fixtures. Isolation is on the output side (schema-per-PR).
-- `upload_data.sh prod` seeds fixture CSVs into `sdp_prod/raw` during prod deploy. This is a demo convenience. In a production project, this volume would be populated by Auto Loader or a separate data ingestion process — not by CI deployment scripts.
+- `upload_data.sh` uses separate fixture files for dev and prod. Dev fixtures (`data/`) contain intentionally bad rows to demonstrate the rejection mechanism. Prod fixtures (`data/prod/`) are clean — all rows pass validation rules, so the prod pipeline completes successfully. In a real project this volume would be populated by Auto Loader, not CI scripts.
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
 - This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. The forward-compatible API is `pyspark.pipelines`. See [Future API migration](#future-api-migration-dlt--pysparkpipelines) below.

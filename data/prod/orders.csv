@@ -1,0 +1,5 @@
+order_id,customer_id,amount,city
+1,1,100.00,Oslo
+2,2,200.00,Bergen
+3,2,300.00,Bergen
+4,99,50.00,Unknown

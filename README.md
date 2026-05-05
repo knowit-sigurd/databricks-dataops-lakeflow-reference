@@ -12,7 +12,10 @@ For a deeper look at the design decisions, environment model, data quality strat
 ```
 pipelines/          # DLT pipeline definitions (customer, orders, gold)
 tests/              # Transformation unit tests (pytest)
-scripts/            # Local dev utilities (upload_data.sh)
+scripts/            # Local dev utilities (upload_data.sh, stop_pipeline.py, validate_counts.py)
+sql/                # Observability queries (rejection summary, rejected rows)
+data/               # Dev fixture CSVs (intentionally bad rows for rejection demo)
+data/prod/          # Prod fixture CSVs (clean — all rows pass validation)
 .github/workflows/  # CI and deploy pipelines
 databricks.yml      # Bundle config (targets: dev, prod)
 ```
@@ -111,8 +114,12 @@ When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automat
 
 - No staging environment. A true staging target requires a separate workspace or UC catalog.
   Current model: PR → `sdp_pr_<n>`, main → `sdp_prod`. No intermediate environment.
-- `upload_data.sh prod` seeds fixture CSVs into `sdp_prod/raw` during prod deploy.
-  In a production project this volume would be populated by Auto Loader, not CI scripts.
+- Dev and prod use separate fixture data. Dev fixtures contain intentionally bad rows to
+  demonstrate the rejection mechanism. Prod fixtures are clean so the pipeline completes.
+  In a production project the source volume would be populated by Auto Loader, not CI scripts.
 - Production deployment runs `bundle deploy` only — it does not trigger the pipeline or assert
   row counts. PR deployments do validate execution (pipeline run + row count assertions).
   Prod pipeline execution is operator-triggered via the Databricks UI or a scheduled job.
+- Event log observability (`event_log()` TVF, `system.lakeflow`) requires a full enterprise
+  workspace with system tables enabled. The `sql/` queries use rejection tables instead, which
+  are accessible without special permissions.
