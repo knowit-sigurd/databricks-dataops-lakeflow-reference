@@ -1,4 +1,0 @@
-pyspark
-pytest
-ruff
-setuptools
