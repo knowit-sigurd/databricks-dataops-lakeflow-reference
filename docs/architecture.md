@@ -174,7 +174,7 @@ Local dev (VS Code + devcontainer)
   ↓  uv run ruff check / pytest
 Feature branch → PR to main
   ↓  CI / ci must pass (lint + tests) — required gate
-  ↓  Deploy SDP Pipelines / deploy-pr runs (deploy + pipeline run + row counts) — informational
+  ↓  Deploy SDP Pipelines / deploy-pr must pass (deploy + pipeline run + row counts) — required gate
 Merge to main
   ↓  deploy-prod triggered, pauses for approval
   ↓  approved → bundle deploy to sdp_prod
@@ -191,14 +191,16 @@ The `main` branch requires a pull request before merging. Direct pushes are bloc
 | Rule | Setting |
 |------|---------|
 | Require pull request before merging | Enabled — no approval required (solo repo) |
-| Require status checks to pass | `CI / ci` must pass before merge |
+| Require status checks to pass | `CI / ci` and `Deploy SDP Pipelines / deploy-pr` must pass before merge |
 | Require branches to be up to date | Enabled |
 | Allow bypassing rules | Disabled — applies to admins too |
 
-`Deploy SDP Pipelines / deploy-pr` is not a required gate — it runs automatically but a
-slow or failed deploy does not block merge. `CI / ci` (lint + tests, ~1 min) is the
-mandatory gate because it is always relevant and fast. The deploy check provides
-additional signal without becoming a bottleneck for documentation-only changes.
+Both checks are required gates. `CI / ci` (lint + tests, ~1 min) verifies correctness
+locally. `Deploy SDP Pipelines / deploy-pr` (deploy + pipeline run + row counts, ~5 min)
+verifies the full Databricks execution path. Requiring deploy-pr to complete before merge
+eliminates the race condition where `cleanup-pr.yml` runs concurrently with a still-running
+`bundle run` and destroys the pipeline mid-execution. If deploy-pr has not completed, the
+merge button is blocked — the cleanup workflow then runs against an idle, finished deployment.
 
 ## Monitoring and alerting
 

@@ -1780,3 +1780,17 @@ After merging M9, stale schemas `sdp_pr_36`, `sdp_pr_37`, `sdp_pr_38` were still
 2. The command was missing `-t dev` — inside a bundle directory the CLI requires a target to resolve the workspace host, same as `databricks fs cp` (re-learned from M7).
 
 Fixed both flags in the cleanup workflow and deleted the three stale schemas manually. Real lesson: `|| true` on a cleanup step hides failures permanently — if cleanup is load-bearing, check it actually ran by inspecting the catalog after the first real PR close.
+
+## 2026-05-05 Post-M14 hotfix — deploy-pr added as required status check
+
+**What I observed:** `bundle run` failed mid-execution with "The specified pipeline was not found." The pipeline had reached PLANNING state. GitHub fires the `pull_request: closed` event immediately on merge, triggering `cleanup-pr.yml` concurrently with the still-running `deploy-pr` job. `bundle destroy` deleted the pipeline while `bundle run` was actively polling it.
+
+**What I learned:** GitHub workflow runs for different events on the same PR execute concurrently by default. There is no built-in ordering guarantee between a `synchronize`-triggered deploy-pr that is still running and a `closed`-triggered cleanup that starts at merge time. The race window exists whenever the PR is merged before deploy-pr finishes.
+
+**What I considered:** GitHub Actions `concurrency` groups — cancelling deploy-pr when cleanup starts for the same PR number. Rejected: this patches the symptom at the workflow layer without addressing the design question underneath it. If a deployment is still running, the PR should not be mergeable.
+
+**What I did:** Added `Deploy SDP Pipelines / deploy-pr` as a required status check alongside `CI / ci` in the branch protection rules on main. GitHub now blocks the merge button until deploy-pr has completed successfully. The cleanup workflow then runs against an idle, finished deployment — no race is possible.
+
+**Practical conclusion:** Required status checks are the correct architectural fix for workflow race conditions caused by concurrent event handling. Concurrency groups are a workaround for a problem that should not exist. Every PR now must wait for the full Databricks pipeline run (~5 min) before merge is allowed — this is the right tradeoff for a repo where deploy-pr is the primary correctness signal.
+
+**Current position:** `main` requires both `CI / ci` (lint + tests) and `Deploy SDP Pipelines / deploy-pr` (deploy + pipeline run + row counts) to pass before merge. Direct pushes blocked including admins. `architecture.md` updated to reflect both checks as required gates.
