@@ -1834,3 +1834,15 @@ Fixed both flags in the cleanup workflow and deleted the three stale schemas man
 **Current position:** `customer_key` removed from `enrich_customers`. Both `rejected_customers` and `rejected_orders` now produce comma-separated `rejection_reason` values for multi-rule failures. Tests cover the multi-reason case explicitly.
 
 **Remaining gaps:** `rejection_reason` is a string, not an array — filtering in SQL requires `array_contains(split(...))`. Acceptable for now; a schema change to array type would be M-level work with a clear consumer need.
+
+## M18: Event Log Observability (2026-05-05)
+
+**What I observed:** The SDP event log is a Delta table in the pipeline's Unity Catalog schema, queryable as `dataops_lab.sdp_dev.event_log`. It contains one row per event with a VARIANT `details` column. `flow_progress` events with status `COMPLETED` carry a `data_quality` field with an array of expectation results — one entry per `@dlt.expect_or_*` decorator per flow.
+
+**What I learned:** Everything visible in the Databricks pipeline UI is queryable via SQL. The event log is not a read-only audit log — it is the authoritative source of truth for expectation pass rates, update durations, and pipeline state transitions. Databricks Lakehouse Monitoring builds on top of this same data.
+
+**Practical conclusion:** Showing clients the event log queries is a strong demonstration point. Most clients assume data quality is only visible in the UI. Seeing it in SQL — with `pass_pct` trending toward a dashboard — reframes the pipeline as an observable system, not a black box.
+
+**Current position:** `sql/expectation_metrics.sql` surfaces per-rule pass/fail counts with pass percentage per pipeline update. `sql/update_history.sql` surfaces the full state transition log per update. Both target `dataops_lab.sdp_dev` — swap the schema name for prod or PR schemas.
+
+**Remaining gaps:** Queries are not parameterized — schema name must be edited manually to switch targets. No dashboard or notebook wrapper. Trend analysis (pass rate over time across multiple updates) requires aggregating across `update_id` — not included here.
