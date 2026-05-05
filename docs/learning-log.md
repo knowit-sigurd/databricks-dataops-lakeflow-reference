@@ -1758,6 +1758,19 @@ Verified in Databricks Catalog Explorer: `amount` column type shows as `DECIMAL(
 **Databricks recommendation noted:** `bundle validate` on the prod target recommended setting `workspace.root_path` explicitly to guarantee only one bundle copy is deployed per identity. Noted as a future improvement; not blocking for a single-operator reference lab.
 
 **GitHub plan prerequisite:** Required reviewer environments require a public repo or a paid plan. Made the repo public as part of this milestone — appropriate for a client reference architecture that contains no hardcoded credentials. Confirmed no sensitive content in tracked files before switching visibility.
+## 2026-05-05 Milestone 14 — Monitoring and alerting (documented, not implemented)
+
+Evaluated push-based alerting as a milestone. Decided not to implement it.
+
+**What the repo already covers:** GitHub emails on CI/job failure, the production approval gate creates a mandatory human review before prod runs, Databricks pipeline UI shows execution history and expectation metrics per update, and `validate_counts.py` asserts row correctness on every PR.
+
+**What is genuinely missing:** A prod pipeline triggered outside CI (scheduled run, manual rerun) can fail without anyone knowing. The platform fix is a Databricks notification destination wired to `on-update-failure` — supports Slack, PagerDuty, etc. — but this is workspace admin configuration, not something managed in `databricks.yml` or CI.
+
+**Why not implemented:** This is a single-operator reference lab with static fixture data. Push notifications add operational overhead before there is an operational need. The right time to introduce alerting is when pipelines run on a schedule, source data changes, and consumers need to know when data is stale. Documented the gap and production patterns in `architecture.md` instead.
+
+**Key insight:** Monitoring is an architectural question before it is an implementation question. The right answer depends on who is watching, what they need to know, and how quickly. Adding Slack webhooks to a reference lab answers the "how" before the "why" is established.
+
+**Also added:** Branch protection rules on `main` — requires PR + `CI / ci` passing before merge. Direct pushes blocked for all users including admins. `deploy-pr` runs automatically but is not a required gate (too slow for docs-only changes).
 
 ## Post-M9 hotfix — PR schema cleanup was silently failing
 

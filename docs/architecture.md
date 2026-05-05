@@ -172,15 +172,74 @@ diff is visible in CI logs before any changes are applied.
 ```
 Local dev (VS Code + devcontainer)
   ↓  uv run ruff check / pytest
-CI (GitHub Actions)
-  ↓  lint + smoke tests pass
-Deploy (upload_data.sh + databricks bundle deploy)
-  ↓
+Feature branch → PR to main
+  ↓  CI / ci must pass (lint + tests) — required gate
+  ↓  Deploy SDP Pipelines / deploy-pr runs (deploy + pipeline run + row counts) — informational
+Merge to main
+  ↓  deploy-prod triggered, pauses for approval
+  ↓  approved → bundle deploy to sdp_prod
 Databricks pipeline execution (serverless)
 ```
 
 Local Spark (via devcontainer) is used for fast iteration and testing transformation logic.
 Full SDP pipeline execution requires Databricks — local runs cannot replicate expectations behavior.
+
+## Branch protection
+
+The `main` branch requires a pull request before merging. Direct pushes are blocked.
+
+| Rule | Setting |
+|------|---------|
+| Require pull request before merging | Enabled — no approval required (solo repo) |
+| Require status checks to pass | `CI / ci` must pass before merge |
+| Require branches to be up to date | Enabled |
+| Allow bypassing rules | Disabled — applies to admins too |
+
+`Deploy SDP Pipelines / deploy-pr` is not a required gate — it runs automatically but a
+slow or failed deploy does not block merge. `CI / ci` (lint + tests, ~1 min) is the
+mandatory gate because it is always relevant and fast. The deploy check provides
+additional signal without becoming a bottleneck for documentation-only changes.
+
+## Monitoring and alerting
+
+This repo does not implement push-based alerting. The current observability coverage is:
+
+| Signal | Where to observe |
+|--------|-----------------|
+| CI failure (lint, tests) | GitHub Actions — email notification on failure |
+| PR deployment failure | GitHub Actions — email notification on failure |
+| Prod deployment | GitHub Actions — production approval gate + job result email |
+| Pipeline execution history | Databricks pipeline UI — event log, update history |
+| Data quality metrics | Databricks pipeline UI — expectation pass/fail rates per update |
+| Row count correctness | `validate_counts.py` — asserts on every PR before merge |
+
+### What production monitoring would add
+
+In a client production deployment, the gaps to address are:
+
+**Pipeline runtime alerting** — a prod pipeline triggered outside CI (scheduled run,
+manual rerun) can fail silently. The platform-native fix is a Databricks notification
+destination (webhook) wired to `on-update-failure` in the pipeline settings. This
+supports Slack, PagerDuty, and other targets. Configuration lives in workspace admin
+settings, not in `databricks.yml`.
+
+**Data quality trending** — Databricks Lakehouse Monitoring can track expectation
+pass rates and row count deviation over time, alerting when metrics degrade across
+runs rather than just within a single run. Appropriate when pipelines run on a schedule
+against changing source data.
+
+**Row count deviation thresholds** — replace the hard-coded counts in
+`validate_counts.py` with percentage-based thresholds (e.g. fail if count changes
+more than 20% vs previous run). Requires persisting previous counts — typically a
+Delta table or an external monitoring store.
+
+### Why not implemented here
+
+This is a reference lab with static fixture data and a single operator. Push
+notifications add operational overhead before there is an operational need.
+The right time to introduce alerting is when pipelines run on a schedule,
+source data changes, and there are consumers who need to know when data is stale
+or incorrect.
 
 ## Known limitations
 
@@ -190,8 +249,29 @@ Full SDP pipeline execution requires Databricks — local runs cannot replicate 
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
 
-This repo currently uses the legacy dlt Python module, which remains supported in Lakeflow SDP.
-Migration to pyspark.pipelines is tracked as future API modernization, not required for this milestone.
+This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. See the
+[API migration](#future-api-migration-dlt--pysparkpipelines) section below.
+
+## Future API migration: dlt → pyspark.pipelines
+
+Databricks is standardizing on `pyspark.pipelines` as the canonical module name for
+Lakeflow SDP pipelines. The legacy `dlt` module continues to work in current runtimes,
+but `pyspark.pipelines` is the forward-compatible API.
+
+**What changes:** The migration is a mechanical rename in the pipeline files only.
+All decorators (`@dlt.table`, `@dlt.expect_or_drop`, `@dlt.expect_or_fail`) and
+functions (`dlt.read()`) are identical in both APIs — only the import line changes.
+
+**What does not change:** `databricks.yml`, CI workflows, tests, and logic modules
+are unaffected. The pipeline runtime behavior is identical.
+
+**Prerequisite before migrating:** Confirm the exact import path against the Databricks
+Runtime version in use. The `pyspark.pipelines` namespace was introduced progressively
+and the stable import path must be verified in the target runtime before updating
+pipeline files. A wrong import is a silent deploy-time failure, not a local test failure.
+
+**Scope:** Four files — `customer_pipeline.py`, `orders_pipeline.py`, `gold_pipeline.py`,
+and any future pipeline entrypoints. One import line per file.
 
 ## Schema evolution
 
