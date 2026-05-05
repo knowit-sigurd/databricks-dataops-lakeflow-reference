@@ -1,5 +1,6 @@
 bundle:
   name: dataops-lab-sdp
+  databricks_cli_version: ">= 0.298.0, < 1.0.0"
 
 variables:
   deployment_suffix:
@@ -16,11 +17,13 @@ targets:
     mode: development
     workspace:
       host: https://dbc-639f4875-165d.cloud.databricks.com
+      root_path: ~/.bundle/${bundle.name}/${bundle.target}/${var.deployment_suffix}
 
   prod:
     mode: production
     workspace:
       host: https://dbc-639f4875-165d.cloud.databricks.com
+      root_path: ~/.bundle/${bundle.name}/${bundle.target}
     variables:
       target_schema: sdp_prod
       quality_mode: fail
