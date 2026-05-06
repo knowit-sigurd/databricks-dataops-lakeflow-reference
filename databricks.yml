@@ -1,6 +1,8 @@
 bundle:
   name: dataops-lab-sdp
   databricks_cli_version: ">= 0.298.0, < 1.0.0"
+  git:
+    branch: main
 
 variables:
   deployment_suffix:
@@ -34,6 +36,9 @@ targets:
           configuration:
             pipelines.maxFlowRetryAttempts: "0"
             pipelines.numUpdateRetryAttempts: "0"
+          permissions:
+            - level: CAN_VIEW
+              user_name: sigurd.lislegaard@knowit.no
 
 resources:
   pipelines:

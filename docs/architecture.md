@@ -120,6 +120,12 @@ Merged to main
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
 `databricks.yml` stays static — no string manipulation inside bundle configuration.
 
+Pipeline ownership is set at deploy time to the identity that ran `databricks bundle deploy`.
+In CI this is the service principal (`DATABRICKS_CLIENT_ID`). SDP pipelines have no `run_as`
+field — there is no mechanism to separate deploying identity from pipeline owner. In a
+production deployment, the deploying identity should be a dedicated data-pipeline service
+principal, not a personal user account.
+
 ## Access model
 
 Unity Catalog privileges are not managed by this repo or by `databricks bundle deploy`.
