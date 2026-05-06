@@ -1,6 +1,7 @@
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 
+# placeholder: real logic would use a configuration-driven lookup
 NO_CITIES = {"Oslo", "Bergen", "Trondheim"}
 
 

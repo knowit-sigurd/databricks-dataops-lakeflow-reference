@@ -26,6 +26,8 @@ targets:
     workspace:
       host: https://dbc-639f4875-165d.cloud.databricks.com
       root_path: ~/.bundle/${bundle.name}/${bundle.target}
+    git:
+      branch: main
     variables:
       target_schema: sdp_prod
       quality_mode: fail
@@ -38,7 +40,7 @@ targets:
             pipelines.numUpdateRetryAttempts: "0"
           permissions:
             - level: CAN_VIEW
-              user_name: sigurd.lislegaard@knowit.no
+              group_name: data-engineers   # replace with an actual group in your workspace
 
 resources:
   pipelines:

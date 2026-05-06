@@ -15,7 +15,7 @@ jobs:
 
       - name: Install Databricks CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/v0.298.0/install.sh | sh
 
       - name: Validate PR context
         run: |
@@ -47,4 +47,16 @@ jobs:
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
-          databricks schemas delete dataops_lab.sdp_pr_${{ github.event.number }} --force -t dev || true
+          set +e
+          OUTPUT=$(databricks schemas delete dataops_lab.sdp_pr_${{ github.event.number }} --force -t dev 2>&1)
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -qi "not found\|does not exist\|no schema"; then
+              echo "Schema not found — nothing to clean up"
+            else
+              echo "Schema delete failed with unexpected error"
+              exit 1
+            fi
+          fi

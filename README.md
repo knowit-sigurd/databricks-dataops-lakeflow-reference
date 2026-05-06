@@ -70,7 +70,7 @@ scripts/upload_data.sh dev
 | Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`, run pipeline, assert counts |
 | PR closed        | Cleanup        | Destroy pipeline and drop `sdp_pr_<n>` schema                            |
 | Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod`                       |
-| Manual dispatch  | Deploy         | Deploy to chosen target (dev)                                            |
+| Manual dispatch  | Deploy         | Deploy dev bundle only — pipeline not run, row counts not asserted       |
 
 The deploy workflow uploads source data to the target volume before running `bundle deploy`.
 

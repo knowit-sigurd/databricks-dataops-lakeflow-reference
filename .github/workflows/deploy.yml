@@ -87,6 +87,8 @@ jobs:
             --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
             --auto-approve
 
+      # workflow_dispatch deploys the bundle only — pipeline run and count assertions
+      # are gated on pull_request events and do not execute on manual dispatch.
       - name: Stop any active pipeline updates
         if: github.event_name == 'pull_request'
         env:
