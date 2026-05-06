@@ -218,18 +218,23 @@ This repo does not implement push-based alerting. The current observability cove
 
 ### Event log observability
 
-The SDP event log (`event_log()` TVF, `system.lakeflow.pipeline_events`) exposes expectation
-pass rates, update durations, and state transitions as queryable SQL. It is the authoritative
-source for what the pipeline UI displays — and the right foundation for a quality dashboard.
+The SDP event log (`event_log()` TVF) exposes update state transitions, per-table row counts,
+and expectation drop counts as queryable SQL. `sql/event_log_runs.sql` and
+`sql/event_log_flow_progress.sql` demonstrate both patterns.
 
-Accessing it requires either pipeline ownership permissions (`event_log()` TVF) or system
-tables enabled at the metastore level (`system.lakeflow`). Both require a full enterprise
-workspace with the user as metastore admin. This reference lab runs on a Databricks training
-workspace where the metastore is managed by Databricks — neither is available.
+Access requires pipeline ownership — `CAN_VIEW` permission is not sufficient. In this repo,
+pipelines deployed by the CI service principal (`dataops-lab-sp`) are owned by that SP.
+The `event_log()` queries in `sql/` target the dev pipeline, which is deployed locally under
+the user's personal account.
 
-The `sql/` folder contains rejection table queries that surface the same data quality signal
-without special permissions. In a client deployment on a full workspace, replace these with
-`system.lakeflow`-based queries for richer observability across pipeline runs.
+`system.lakeflow.pipeline_events` surfaces the same data across all pipelines without
+per-pipeline ownership. Accessing it requires `USE SCHEMA` on `system.lakeflow`, which must
+be granted by an account admin. Once in place, `system.lakeflow` is the right foundation for
+a cross-pipeline quality dashboard.
+
+The `sql/` folder also contains rejection table queries (`rejection_summary.sql`,
+`rejected_rows.sql`) which provide business-level rejection reasons per row — complementary
+to the event log metrics, which report aggregate counts only.
 
 ### What production monitoring would add
 
@@ -266,6 +271,7 @@ or incorrect.
 - `upload_data.sh` uses separate fixture files for dev and prod. Dev fixtures (`data/`) contain intentionally bad rows to demonstrate the rejection mechanism. Prod fixtures (`data/prod/`) are clean — all rows pass validation rules, so the prod pipeline completes successfully. In a real project this volume would be populated by Auto Loader, not CI scripts.
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
+- `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod pipeline is owned by the CI service principal — its event log is inaccessible to human users without ownership transfer or account admin intervention.
 - This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. The forward-compatible API is `pyspark.pipelines`. See [Future API migration](#future-api-migration-dlt--pysparkpipelines) below.
 
 ## Schema evolution

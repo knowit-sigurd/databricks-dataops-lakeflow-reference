@@ -1835,16 +1835,32 @@ Fixed both flags in the cleanup workflow and deleted the three stale schemas man
 
 **Remaining gaps:** `rejection_reason` is a string, not an array — filtering in SQL requires `array_contains(split(...))`. Acceptable for now; a schema change to array type would be M-level work with a clear consumer need.
 
-## M18: Observability Queries and Prod Data Fix (2026-05-05)
+## M18: Observability Queries and Prod Data Fix (2026-05-05, corrected 2026-05-06)
 
-**What I observed:** Three approaches to querying the SDP event log were attempted. (1) `event_log('<pipeline_id>')` TVF returned PERMISSION_DENIED on a SQL warehouse. (2) `dataops_lab.sdp_dev.event_log` returned TABLE_OR_VIEW_NOT_FOUND — the event log is not automatically materialized as a schema table in this workspace. (3) `system.lakeflow.pipeline_events` returned TABLE_OR_VIEW_NOT_FOUND — system tables are not enabled. Root cause: this is a Databricks training workspace where the metastore is managed by Databricks. Metastore admin access is required for system table enablement and is not available here.
+**What I observed (initial failures and actual causes):** Three failures when first attempting `event_log()`:
 
-**What I learned:** The SDP event log (`event_log()` TVF, `system.lakeflow`) requires either pipeline ownership permissions or metastore admin access. Both require a full enterprise workspace. A Databricks training workspace provides workspace admin but not metastore admin — these are separate roles in Unity Catalog. The rejection tables are always accessible to anyone with SELECT on the schema and surface the same data quality signal without special permissions.
+1. `event_log('<pipeline_id>')` on a SQL warehouse → `PERMISSION_DENIED`. Error message said "use a SHARED cluster instead." Retried on a shared cluster, a serverless notebook, and a serverless SQL warehouse — identical error on all three. The cluster type message was a red herring.
+2. `dataops_lab.sdp_dev.event_log` → `TABLE_OR_VIEW_NOT_FOUND` — the event log is not materialized as a schema table.
+3. `system.lakeflow.pipeline_events` → `TABLE_OR_VIEW_NOT_FOUND`.
 
-**Practical conclusion:** For a client deployment on a full enterprise workspace, `system.lakeflow.pipeline_events` is the right observability foundation — queryable, cross-pipeline, and dashboardable. For this reference lab, rejection table queries are the practical alternative and still tell the data quality story effectively.
+**What the actual causes were:**
+
+For `event_log()`: the prod pipeline (`prod_medallion_pipeline`) was deployed by the CI service principal, which became the pipeline owner. `event_log()` requires pipeline ownership — `CAN_VIEW` is not sufficient. Confirmed by granting `CAN_VIEW` via the CLI; PERMISSION_DENIED persisted. Then tested `event_log()` on the dev pipeline, which is owned by my personal account — it worked immediately on a serverless SQL warehouse.
+
+For `system.lakeflow`: the schema exists in the metastore but requires `USE SCHEMA` granted by an account admin. Workspace admin is insufficient — granting system schema privileges requires account-level access. The workspace is managed by Knowit (not Databricks) — the initial assumption that this was a Databricks-managed training workspace was wrong.
+
+**What I learned:** `event_log()` is accessible in this workspace. The access boundary is pipeline ownership, not workspace type. `CAN_VIEW` on a pipeline is not the same as ownership for this TVF. The "Assigned cluster" error that appeared on every compute type (including shared cluster and serverless) was a misleading error code — the real failure was a permission check on the pipeline identity, not a compute mode check.
+
+**Practical conclusion:** In CI/CD workflows where the service principal deploys pipelines, the service principal becomes the pipeline owner. Human users who need to query `event_log()` must either own the pipeline themselves (local dev deploys) or have the service principal explicitly grant access — and even then, `CAN_VIEW` may not be sufficient. The clean solution for a multi-operator team is to deploy with a service principal and grant that SP's event log access to a dedicated monitoring service account, or use `system.lakeflow` once account admin grants are in place.
 
 **What I observed (prod data fix):** The prod fixture data was a copy of dev data, which contains intentionally bad rows. In dev, `quality_mode=drop` silently routes those rows to rejection tables and the pipeline completes. In prod, `quality_mode=fail` aborts the pipeline on the first invalid row — bronze and rejected tables were created, silver and gold were never written. Fix: separate `data/prod/` fixture files with clean data. `upload_data.sh` now uses `data/prod/` for the prod target and `data/` for dev.
 
-**Current position:** `sql/rejection_summary.sql` aggregates rejected row counts by rule and entity. `sql/rejected_rows.sql` lists individual rejected rows with IDs for investigation. Both target `dataops_lab.sdp_dev` — swap schema name for prod or PR schemas. Prod fixture data in `data/prod/` is clean — all rows pass validation. Dev fixture data unchanged, bad rows preserved for rejection demonstration.
+**Current position:** Four SQL files in `sql/`:
+- `event_log_runs.sql` — update history per pipeline run (start time, end time, duration, final state)
+- `event_log_flow_progress.sql` — per-table row counts and dropped records per update
+- `rejection_summary.sql` — rejected row counts grouped by rule and entity (rejection tables, no pipeline ID needed)
+- `rejected_rows.sql` — individual rejected rows with business-level rejection reasons
 
-**Remaining gaps:** Event log observability (`system.lakeflow`, `event_log()` TVF) is not available in this training workspace. In a full enterprise workspace, `system.lakeflow.pipeline_events` would replace the rejection table queries and provide richer signal — expectation pass rates, update duration, and state transitions across all pipeline runs.
+The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline event log is inaccessible — the CI service principal is the owner. Prod fixture data in `data/prod/` is clean. Dev fixture data unchanged, bad rows preserved for rejection demonstration.
+
+**Remaining gaps:** `system.lakeflow.pipeline_events` requires account admin to grant `USE SCHEMA` on `system.lakeflow`. Until that grant is in place, cross-pipeline observability is unavailable. In a client deployment with account admin access, `system.lakeflow` is the right foundation — it surfaces the same data as `event_log()` across all pipelines without requiring per-pipeline ownership.
