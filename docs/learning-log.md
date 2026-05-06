@@ -1922,4 +1922,5 @@ The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline 
 
 **Remaining gaps**
 - Prod pipeline permissions are not managed by the bundle. In a client workspace with provisioned groups, the permissions block should reference a group name. Documented in M23 (setup.md).
+- Prod has no automated row count assertion. If the pipeline was previously run against an empty volume, a subsequent incremental run silently skips reprocessing gold — DLT streaming state considers it up to date. Discovered during M21 validation: `customers_silver` had 3 rows, `orders_silver` had 4 rows, `customer_order_summary` had 0. Full refresh resolved it. PR deployments catch this via `validate_counts.py`; prod does not.
 - Two-PR isolation proof (M22) not yet run.
