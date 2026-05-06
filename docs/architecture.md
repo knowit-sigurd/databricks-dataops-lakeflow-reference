@@ -221,6 +221,8 @@ This repo does not implement push-based alerting. The current observability cove
 | Data quality metrics | Databricks pipeline UI — expectation pass/fail rates per update |
 | Row count correctness | `validate_counts.py` — asserts on every PR before merge |
 | Rejected rows (SQL) | `sql/rejection_summary.sql`, `sql/rejected_rows.sql` — queryable via SQL warehouse |
+| Event log — update history | `sql/event_log_runs.sql` — update durations and final state per run |
+| Event log — table throughput | `sql/event_log_flow_progress.sql` — row counts and dropped records per table per run |
 
 ### Event log observability
 
