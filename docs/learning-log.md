@@ -1864,3 +1864,58 @@ For `system.lakeflow`: the schema exists in the metastore but requires `USE SCHE
 The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline event log is inaccessible — the CI service principal is the owner. Prod fixture data in `data/prod/` is clean. Dev fixture data unchanged, bad rows preserved for rejection demonstration.
 
 **Remaining gaps:** `system.lakeflow.pipeline_events` requires account admin to grant `USE SCHEMA` on `system.lakeflow`. Until that grant is in place, cross-pipeline observability is unavailable. In a client deployment with account admin access, `system.lakeflow` is the right foundation — it surfaces the same data as `event_log()` across all pipelines without requiring per-pipeline ownership.
+
+## M19: Production Hardening (2026-05-06)
+
+**What I observed:** `run_as` in DAB applies to jobs, not pipelines.
+SDP/Lakeflow pipelines have no `run_as` field. The pipeline owner is
+the identity that ran `databricks bundle deploy` — in CI, that is the
+service principal. There is no mechanism to specify a running identity
+separate from the owner.
+
+**What I learned:** The git.branch constraint I planned was already
+enforced at the GitHub Actions layer (`if: github.ref_name == 'main'`
+on the deploy-prod job). The `bundle.git.branch: main` annotation in
+`databricks.yml` makes the intent explicit in the config itself and
+surfaces in `bundle validate` output — but it does not block a local
+`bundle deploy -t prod` from a feature branch. In a single-operator
+lab that is acceptable. In a team environment, enforcement belongs in
+CI/CD, not in the bundle config, because DAB has no constraint or
+assert mechanism.
+
+**What I observed (permissions):** Pipeline ACLs in `databricks.yml`
+are workspace-level — who can see and trigger the pipeline in the
+Workflows UI. This is separate from Unity Catalog grants on the output
+tables. Setting one does not set the other.
+
+**Practical conclusion:** For pipeline identity, the only safe pattern
+is deploying with a dedicated service principal. If a personal account
+deploys, that account becomes the pipeline owner. When the person
+leaves, the ownership is orphaned until the next deploy.
+
+**Current position:** `bundle.git.branch: main` declared in
+`databricks.yml`. Pipeline permissions block declared for prod target.
+Architecture.md explains the pipeline identity model and the distinction
+between workspace ACLs and UC table grants. Git branch enforcement
+remains at the GitHub Actions layer.
+
+**Remaining gaps:** Workspace groups (`data-engineers`) are not
+provisioned in this training workspace. In a client deployment,
+pipeline permissions would reference group names, not user emails.
+Group provisioning is an IT/identity-provider concern outside the
+scope of this reference.
+
+
+## M19: Production Hardening (2026-05-06)
+
+**What I observed:** `run_as` in DAB applies to jobs, not pipelines. SDP/Lakeflow pipelines have no `run_as` field. The pipeline owner is the identity that ran `databricks bundle deploy` — in CI, that is the service principal. There is no mechanism to specify a running identity separate from the owner.
+
+**What I learned:** The git.branch constraint I planned was already enforced at the GitHub Actions layer (`if: github.ref_name == 'main'` on the deploy-prod job). The `bundle.git.branch: main` annotation in `databricks.yml` makes the intent explicit in the config itself and surfaces in `bundle validate` output — but it does not block a local `bundle deploy -t prod` from a feature branch. In a single-operator lab that is acceptable. In a team environment, enforcement belongs in CI/CD, not in the bundle config, because DAB has no constraint or assert mechanism.
+
+**What I observed (permissions):** Pipeline ACLs in `databricks.yml` are workspace-level — who can see and trigger the pipeline in the Workflows UI. This is separate from Unity Catalog grants on the output tables. Setting one does not set the other.
+
+**Practical conclusion:** For pipeline identity, the only safe pattern is deploying with a dedicated service principal. If a personal account deploys, that account becomes the pipeline owner. When the person leaves, the ownership is orphaned until the next deploy.
+
+**Current position:** `bundle.git.branch: main` declared in `databricks.yml`. Pipeline permissions block declared for prod target. Architecture.md explains the pipeline identity model and the distinction between workspace ACLs and UC table grants. Git branch enforcement remains at the GitHub Actions layer.
+
+**Remaining gaps:** Workspace groups (`data-engineers`) are not provisioned in this training workspace. In a client deployment, pipeline permissions would reference group names, not user emails. Group provisioning is an IT/identity-provider concern outside the scope of this reference.
