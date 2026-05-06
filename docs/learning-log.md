@@ -1867,47 +1867,6 @@ The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline 
 
 ## M19: Production Hardening (2026-05-06)
 
-**What I observed:** `run_as` in DAB applies to jobs, not pipelines.
-SDP/Lakeflow pipelines have no `run_as` field. The pipeline owner is
-the identity that ran `databricks bundle deploy` — in CI, that is the
-service principal. There is no mechanism to specify a running identity
-separate from the owner.
-
-**What I learned:** The git.branch constraint I planned was already
-enforced at the GitHub Actions layer (`if: github.ref_name == 'main'`
-on the deploy-prod job). The `bundle.git.branch: main` annotation in
-`databricks.yml` makes the intent explicit in the config itself and
-surfaces in `bundle validate` output — but it does not block a local
-`bundle deploy -t prod` from a feature branch. In a single-operator
-lab that is acceptable. In a team environment, enforcement belongs in
-CI/CD, not in the bundle config, because DAB has no constraint or
-assert mechanism.
-
-**What I observed (permissions):** Pipeline ACLs in `databricks.yml`
-are workspace-level — who can see and trigger the pipeline in the
-Workflows UI. This is separate from Unity Catalog grants on the output
-tables. Setting one does not set the other.
-
-**Practical conclusion:** For pipeline identity, the only safe pattern
-is deploying with a dedicated service principal. If a personal account
-deploys, that account becomes the pipeline owner. When the person
-leaves, the ownership is orphaned until the next deploy.
-
-**Current position:** `bundle.git.branch: main` declared in
-`databricks.yml`. Pipeline permissions block declared for prod target.
-Architecture.md explains the pipeline identity model and the distinction
-between workspace ACLs and UC table grants. Git branch enforcement
-remains at the GitHub Actions layer.
-
-**Remaining gaps:** Workspace groups (`data-engineers`) are not
-provisioned in this training workspace. In a client deployment,
-pipeline permissions would reference group names, not user emails.
-Group provisioning is an IT/identity-provider concern outside the
-scope of this reference.
-
-
-## M19: Production Hardening (2026-05-06)
-
 **What I observed:** `run_as` in DAB applies to jobs, not pipelines. SDP/Lakeflow pipelines have no `run_as` field. The pipeline owner is the identity that ran `databricks bundle deploy` — in CI, that is the service principal. There is no mechanism to specify a running identity separate from the owner.
 
 **What I learned:** The git.branch constraint I planned was already enforced at the GitHub Actions layer (`if: github.ref_name == 'main'` on the deploy-prod job). The `bundle.git.branch: main` annotation in `databricks.yml` makes the intent explicit in the config itself and surfaces in `bundle validate` output — but it does not block a local `bundle deploy -t prod` from a feature branch. In a single-operator lab that is acceptable. In a team environment, enforcement belongs in CI/CD, not in the bundle config, because DAB has no constraint or assert mechanism.
@@ -1919,3 +1878,15 @@ scope of this reference.
 **Current position:** `bundle.git.branch: main` declared in `databricks.yml`. Pipeline permissions block declared for prod target. Architecture.md explains the pipeline identity model and the distinction between workspace ACLs and UC table grants. Git branch enforcement remains at the GitHub Actions layer.
 
 **Remaining gaps:** Workspace groups (`data-engineers`) are not provisioned in this training workspace. In a client deployment, pipeline permissions would reference group names, not user emails. Group provisioning is an IT/identity-provider concern outside the scope of this reference.
+
+## M20: Client Demo Guide (2026-05-06)
+
+**What I built:** Two walkthrough documents — `docs/demo-guide.md` (30-minute technical walkthrough for a data engineering lead) and `docs/demo-guide-exec.md` (10-minute executive overview for a decision-maker). Both are structured around what to show, what to say, and expected questions.
+
+**What I learned:** Writing the demo guide forced prioritisation. Not every feature belongs in a 30-minute demo. The exercise revealed two places where architecture decisions were implicit in the code but not stated as talking points anywhere — the `dlt.read()` dependency model replacing explicit job sequencing, and the two-layer deployment identity model (workspace ACL vs UC table grants). Both became explicit "what to say" notes in the guide.
+
+**Practical conclusion:** A reference repo without a demo guide is a portfolio piece. A reference repo with a demo guide is a sales tool. The guide is the difference between "here is something I built" and "here is how we would deliver this for you." The exec guide serves a different function — it reframes technical decisions as business outcomes without requiring the audience to understand YAML or Python.
+
+**Current position:** `docs/demo-guide.md` covers six sections: architecture overview, code structure and rules, environment and deployment model, pipeline run and event log, data quality queries, CI/CD and promotion model. `docs/demo-guide-exec.md` covers four sections: the problem with custom frameworks, quality enforcement, controlled production deployment, and effort/maintenance. Both include expected client questions per section.
+
+**Remaining gaps:** The guides assume the workspace is already provisioned and pipelines are deployed. First-time setup — catalog creation, volume provisioning, service principal configuration, GitHub secrets — is not covered. That is a separate onboarding document appropriate when handing the repo to a new team.

@@ -7,16 +7,19 @@ promotion, schema-per-PR isolation, data quality enforcement, and a production a
 
 For a deeper look at the design decisions, environment model, data quality strategy, and deployment approval policy, see [docs/architecture.md](docs/architecture.md).
 
+To demonstrate the repo to a client, see [docs/demo-guide.md](docs/demo-guide.md) (30-minute technical walkthrough for a data engineering lead) or [docs/demo-guide-exec.md](docs/demo-guide-exec.md) (10-minute executive overview).
+
 ## Project structure
 
 ```
-pipelines/          # DLT pipeline definitions (customer, orders, gold)
+pipelines/          # SDP pipeline definitions (customer, orders, gold) + logic modules
 tests/              # Transformation unit tests (pytest)
-scripts/            # Local dev utilities (upload_data.sh, stop_pipeline.py, validate_counts.py)
-sql/                # Observability queries (rejection summary, rejected rows)
+scripts/            # Utilities (upload_data.sh, stop_pipeline.py, validate_counts.py)
+sql/                # Observability queries (event log, rejection tables)
 data/               # Dev fixture CSVs (intentionally bad rows for rejection demo)
 data/prod/          # Prod fixture CSVs (clean — all rows pass validation)
-.github/workflows/  # CI and deploy pipelines
+docs/               # Architecture, learning log, demo guides
+.github/workflows/  # CI and deploy workflows
 databricks.yml      # Bundle config (targets: dev, prod)
 ```
 
@@ -120,6 +123,7 @@ When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automat
 - Production deployment runs `bundle deploy` only — it does not trigger the pipeline or assert
   row counts. PR deployments do validate execution (pipeline run + row count assertions).
   Prod pipeline execution is operator-triggered via the Databricks UI or a scheduled job.
-- Event log observability (`event_log()` TVF, `system.lakeflow`) requires a full enterprise
-  workspace with system tables enabled. The `sql/` queries use rejection tables instead, which
-  are accessible without special permissions.
+- `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod
+  pipeline is owned by the CI service principal — `event_log()` requires pipeline ownership,
+  not just `CAN_VIEW`. `system.lakeflow` provides cross-pipeline observability but requires
+  account admin to grant `USE SCHEMA` access.
