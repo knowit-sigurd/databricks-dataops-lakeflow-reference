@@ -8,7 +8,7 @@ SELECT
   MAX(timestamp)                                          AS ended_at,
   TIMESTAMPDIFF(SECOND, MIN(timestamp), MAX(timestamp))  AS duration_seconds,
   MAX_BY(details:update_progress.state, timestamp)       AS final_state
-FROM event_log('09d4efc7-2498-45d8-97aa-ca280edf24d3')
+FROM event_log('<your-dev-pipeline-id>')
 WHERE event_type = 'update_progress'
 GROUP BY origin.update_id
 ORDER BY started_at DESC;

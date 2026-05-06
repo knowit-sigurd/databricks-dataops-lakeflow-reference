@@ -1890,3 +1890,36 @@ The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline 
 **Current position:** `docs/demo-guide.md` covers six sections: architecture overview, code structure and rules, environment and deployment model, pipeline run and event log, data quality queries, CI/CD and promotion model. `docs/demo-guide-exec.md` covers four sections: the problem with custom frameworks, quality enforcement, controlled production deployment, and effort/maintenance. Both include expected client questions per section.
 
 **Remaining gaps:** The guides assume the workspace is already provisioned and pipelines are deployed. First-time setup — catalog creation, volume provisioning, service principal configuration, GitHub secrets — is not covered. That is a separate onboarding document appropriate when handing the repo to a new team.
+
+
+## 2026-05-06 — M21: Deployment safety cleanup
+
+**What I observed**
+- `cleanup-pr.yml` was installing the Databricks CLI from `setup-cli/main` (HEAD), meaning each PR cleanup could silently use a different CLI version than the one validated in deploy.yml.
+- `|| true` on the schema delete step suppressed all errors, including genuine failures unrelated to "schema not found".
+- `databricks.yml` prod permissions referenced a personal email address. DAB had deployed it as CAN_MANAGE because a higher manual grant already existed, but the config expressed the wrong pattern.
+- `bundle.git.branch` at bundle level is metadata only. Enforcement requires `git.branch` under the specific target.
+- `workflow_dispatch` in deploy.yml executes only `bundle deploy` — the three subsequent steps (stop pipeline, run pipeline, assert counts) are gated on `github.event_name == 'pull_request'` and silently skip on manual dispatch.
+
+**What I learned**
+- Unpinned tool versions in CI are a latent risk even when things appear to work. Version drift is invisible until a breaking change ships.
+- `|| true` is appropriate only when an error genuinely does not matter. On a load-bearing cleanup step it converts silent failures into stale state.
+- Prod permissions in a bundle should express the right access pattern (group, not individual), regardless of what the workspace currently has. DAB does not downgrade, but it does record intent.
+- `git.branch` placement matters: bundle level = documentation, target level = DAB enforcement.
+
+**Practical conclusion**
+- Pin all CLI versions in all workflows to the same version used in the last known-good deploy.
+- Replace `|| true` with explicit not-found detection on any cleanup step that is load-bearing.
+- Use groups, not personal emails, in bundle permissions. If no group exists yet, remove the block and document that access is granted manually.
+
+**Current position**
+- All seven identified safety issues resolved.
+- `cleanup-pr.yml` pins CLI to `v0.298.0` and fails explicitly on unexpected schema delete errors.
+- `databricks.yml` prod permissions use `group_name: data-engineers` (placeholder — replace with actual group).
+- `git.branch: main` is now present under `targets.prod` as well as at bundle level.
+- SQL observability files use `<your-dev-pipeline-id>` placeholders.
+- `NO_CITIES` in `common.py` has a one-line comment.
+
+**Remaining gaps**
+- `data-engineers` group does not exist in this workspace — prod permissions block is a pattern demonstration only. Real group assignment is part of M23 (setup.md).
+- Two-PR isolation proof (M22) not yet run.
