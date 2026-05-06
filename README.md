@@ -123,6 +123,9 @@ When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automat
 - Production deployment runs `bundle deploy` only — it does not trigger the pipeline or assert
   row counts. PR deployments do validate execution (pipeline run + row count assertions).
   Prod pipeline execution is operator-triggered via the Databricks UI or a scheduled job.
+  If prod was previously run against an empty volume, a subsequent incremental run will not
+  reprocess gold — DLT's streaming state considers it up to date. Use Full refresh to force
+  recomputation after data is loaded for the first time.
 - `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod
   pipeline is owned by the CI service principal — `event_log()` requires pipeline ownership,
   not just `CAN_VIEW`. `system.lakeflow` provides cross-pipeline observability but requires
