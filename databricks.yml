@@ -38,9 +38,7 @@ targets:
           configuration:
             pipelines.maxFlowRetryAttempts: "0"
             pipelines.numUpdateRetryAttempts: "0"
-          permissions:
-            - level: CAN_VIEW
-              group_name: data-engineers   # replace with an actual group in your workspace
+
 
 resources:
   pipelines:
