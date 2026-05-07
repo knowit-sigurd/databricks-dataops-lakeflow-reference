@@ -280,7 +280,6 @@ or incorrect.
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
 - `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod pipeline is owned by the CI service principal — its event log is inaccessible to human users without ownership transfer or account admin intervention.
-- This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. The forward-compatible API is `pyspark.pipelines`. See [Future API migration](#future-api-migration-dlt--pysparkpipelines) below.
 - CI authentication uses a long-lived `DATABRICKS_CLIENT_SECRET` GitHub secret. The platform-native improvement is OIDC workload identity federation: GitHub Actions proves its identity via a short-lived cryptographic token, and Databricks issues a scoped access token in exchange — no stored secret, nothing to rotate. Configuring this requires Databricks account admin access (`accounts.cloud.databricks.com`) to set a federation policy on the service principal. That access is not available in this workspace. In a client deployment with a dedicated platform team, OIDC federation should be the default credential model for all CI/CD integrations.
 - UC schemas and volumes are created by manual SQL during setup (see `docs/setup.md`). DAB supports declaring schemas and volumes as managed resources with inline grants, which would make the prod schema reproducible from `bundle deploy` without manual SQL. Not implemented here because `bundle destroy` removes all resources in a target — declaring `sdp_dev` in the dev target would cause `cleanup-pr.yml` to drop it on every PR close. Only fixed, long-lived schemas in targets that are never destroyed programmatically are safe to declare in DAB. In this repo that is the prod target only, which reduces the improvement to a single schema. Documented as a pattern; the constraint is real.
 
@@ -320,27 +319,6 @@ Handling unexpected columns at ingest (schema drift guard), Auto Loader schema e
 mode, and schema registry integration are production patterns not implemented in this
 reference. They are appropriate when source schemas are truly unknown or when multiple
 upstream teams write to the same volumes.
-
-## Future API migration: dlt → pyspark.pipelines
-
-Databricks is standardizing on `pyspark.pipelines` as the canonical module name for
-Lakeflow SDP pipelines. The legacy `dlt` module continues to work in current runtimes,
-but `pyspark.pipelines` is the forward-compatible API.
-
-**What changes:** The migration is a mechanical rename in the pipeline files only.
-All decorators (`@dlt.table`, `@dlt.expect_or_drop`, `@dlt.expect_or_fail`) and
-functions (`dlt.read()`) are identical in both APIs — only the import line changes.
-
-**What does not change:** `databricks.yml`, CI workflows, tests, and logic modules
-are unaffected. The pipeline runtime behavior is identical.
-
-**Prerequisite before migrating:** Confirm the exact import path against the Databricks
-Runtime version in use. The `pyspark.pipelines` namespace was introduced progressively
-and the stable import path must be verified in the target runtime before updating
-pipeline files. A wrong import is a silent deploy-time failure, not a local test failure.
-
-**Scope:** Four files — `customer_pipeline.py`, `orders_pipeline.py`, `gold_pipeline.py`,
-and any future pipeline entrypoints. One import line per file.
 
 ## Future enrichment: Auto Loader bronze
 
