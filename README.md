@@ -27,7 +27,7 @@ databricks.yml      # Bundle config (targets: dev, prod)
 
 ## How it works
 
-Pipelines are defined declaratively in Python using the `dlt` library and deployed
+Pipelines are defined declaratively in Python using the `pyspark.pipelines` API and deployed
 as Databricks Asset Bundles. Promotion is controlled entirely through Git.
 
 ```
