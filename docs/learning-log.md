@@ -1992,3 +1992,42 @@ update step. Making them configurable via `${localEnv:...}` would remove the ste
 candidate for a future cleanup if the repo is handed to a team.
 
 
+## 2026-05-07 — M24: OIDC Workload Identity Federation (not implemented)
+
+**What I investigated**
+The current CI setup stores a long-lived `DATABRICKS_CLIENT_SECRET` as a GitHub Actions secret.
+The platform-native alternative is OIDC workload identity federation: GitHub issues a short-lived
+signed token proving the job's origin (repo, branch, workflow), Databricks is configured to trust
+GitHub as an identity provider for that specific repo, and the token is exchanged for a scoped
+Databricks access token. No secret is stored in GitHub; the token expires in minutes.
+
+**What I observed**
+Configuring OIDC federation on a Databricks service principal requires account admin access at
+`accounts.cloud.databricks.com` — workspace admin is not sufficient. The Knowit workspace is
+managed at the account level by a separate platform team. Attempting to access the account
+console redirected to a personal free-tier workspace, confirming that account admin access is
+not available to this user.
+
+**What I learned**
+The separation between workspace admin and account admin is a real operational boundary in
+Databricks. The DataOps team can write the CI workflows; only the platform team can configure
+SP credential policies. This is the correct separation of concerns in a production deployment
+— it prevents the engineering team from granting themselves escalated access — but it means
+OIDC federation cannot be self-service in a shared managed workspace.
+
+**Practical conclusion**
+In a client engagement, OIDC federation setup belongs in the platform onboarding runbook, not
+the DataOps repo. The DataOps team delivers the workflow configuration (the `id-token: write`
+permission and token exchange step); the platform team configures the SP federation policy.
+Both sides need to coordinate before the client secret can be removed.
+
+**Current position**
+Not implemented. `DATABRICKS_CLIENT_SECRET` remains in use. The pattern is documented in
+`docs/architecture.md` under Known Limitations with the exact blocker stated.
+
+**Remaining gaps**
+OIDC federation is executable if account admin access becomes available — either through the
+Knowit platform team or in a client workspace where the DataOps team has broader access.
+The workflow changes required are straightforward once the SP federation policy is in place.
+
+
