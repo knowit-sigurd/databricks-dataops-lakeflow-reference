@@ -1,6 +1,6 @@
 -- Pipeline update history: one row per update with final state and duration.
 -- Requires ownership of the pipeline or CAN_MANAGE permission.
--- Replace the pipeline ID with your own (find it in the pipeline URL or via 'databricks pipelines list').
+-- Replace the pipeline ID with your own (find it in the pipeline URL in the Databricks UI).
 
 SELECT
   origin.update_id,
