@@ -1,4 +1,4 @@
-import dlt
+import pyspark.pipelines as dlt
 from pyspark.sql.types import DecimalType, LongType, StringType, StructField, StructType
 
 from orders import ORDER_RULES, enrich_orders, rejected_orders

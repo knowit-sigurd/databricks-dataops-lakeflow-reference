@@ -1,4 +1,4 @@
-import dlt
+import pyspark.pipelines as dlt
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
 from customers import CUSTOMER_RULES, enrich_customers, rejected_customers, standardize_customers

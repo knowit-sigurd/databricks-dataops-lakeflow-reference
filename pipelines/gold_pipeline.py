@@ -1,4 +1,4 @@
-import dlt
+import pyspark.pipelines as dlt
 
 from gold import build_customer_order_summary
 
