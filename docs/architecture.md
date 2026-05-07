@@ -281,6 +281,7 @@ or incorrect.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.
 - `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod pipeline is owned by the CI service principal — its event log is inaccessible to human users without ownership transfer or account admin intervention.
 - This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. The forward-compatible API is `pyspark.pipelines`. See [Future API migration](#future-api-migration-dlt--pysparkpipelines) below.
+- CI authentication uses a long-lived `DATABRICKS_CLIENT_SECRET` GitHub secret. The platform-native improvement is OIDC workload identity federation: GitHub Actions proves its identity via a short-lived cryptographic token, and Databricks issues a scoped access token in exchange — no stored secret, nothing to rotate. Configuring this requires Databricks account admin access (`accounts.cloud.databricks.com`) to set a federation policy on the service principal. That access is not available in this workspace. In a client deployment with a dedicated platform team, OIDC federation should be the default credential model for all CI/CD integrations.
 
 ## Schema evolution
 
