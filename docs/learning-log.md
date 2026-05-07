@@ -1951,3 +1951,44 @@ The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline 
 **Remaining gaps**
 - Input isolation (raw volume `/Volumes/dataops_lab/sdp_dev/raw`) is not isolated by design — all PR pipelines share the same static fixture input. This is intentional and the correct approach for a reference repo with shared fixture data.
 - `validate_counts.py` has hardcoded expected row counts tightly coupled to fixture files. Any fixture change requires a matching code change. Flagged for a future cleanup milestone.
+
+
+## 2026-05-07 — M23: Setup.md and Runbook.md
+
+**What I built**
+Two operational documents: `docs/setup.md` (first-time workspace provisioning — service principal,
+Unity Catalog, GitHub secrets, branch protection, devcontainer setup) and `docs/runbook.md`
+(day-to-day operations — prod trigger, full refresh decision, validate_counts failures, manual
+PR cleanup, event log queries, CLI version pinning). Both linked from `README.md`.
+
+**What I observed**
+Writing `setup.md` revealed that two values in `.devcontainer/devcontainer.json` are hardcoded
+to the original author's identity: `DATABRICKS_CONFIG_PROFILE` and `DATABRICKS_WAREHOUSE_ID`.
+A new engineer opening the container without updating these values would get auth failures with
+no obvious cause — neither value is documented anywhere else in the repo.
+
+**What I learned**
+A repo is not ready to hand over until someone who has never seen it can provision and operate
+it from the documentation alone. Writing `setup.md` as if you were that person surfaces
+assumptions that are invisible from inside the working environment. The devcontainer grants are
+a good example: they work seamlessly once configured, which is precisely why no one documents
+how to configure them.
+
+**Practical conclusion**
+Setup documentation should be written before handover, not after the first time a new engineer
+gets stuck. The cost of writing it while the context is fresh is low. The cost of reconstructing
+it six months later — or leaving a new engineer to reverse-engineer it from the devcontainer.json
+— is high.
+
+**Current position**
+`docs/setup.md` covers: service principal creation, UC grants, GitHub secrets, production
+environment, branch protection, devcontainer setup, and first deploy. `docs/runbook.md` covers:
+prod pipeline trigger, full refresh decision, validate_counts failure diagnosis, manual PR
+cleanup, manual dev redeploy, event log queries, and CLI version pinning.
+
+**Remaining gaps**
+`devcontainer.json` still has hardcoded personal values. Documented in `setup.md` as a manual
+update step. Making them configurable via `${localEnv:...}` would remove the step entirely —
+candidate for a future cleanup if the repo is handed to a team.
+
+
