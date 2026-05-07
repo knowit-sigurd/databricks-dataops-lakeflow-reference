@@ -9,7 +9,7 @@ dev = [
     "pyspark>=4.1.1",
     "pytest>=8.0",
     "ruff>=0.4",
-    "setuptools>=70",
+    "setuptools>=82.0.1",
 ]
 
 [tool.pytest.ini_options]
