@@ -42,7 +42,7 @@ Schemas are also environment-scoped:
 | prod       | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
 
 PR deployments share the `sdp_dev` source volume — source data is static CSV fixtures,
-so input isolation is not needed. Output isolation (schema-per-PR) prevents contention.
+so input isolation is not needed. Output isolation (schema-per-PR) prevents contention — verified by concurrent live execution of two PRs (M22).
 
 ## Local development workflow
 

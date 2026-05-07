@@ -89,7 +89,7 @@ giving each PR an isolated pipeline name and an isolated Unity Catalog schema.
 
 All PR deployments share `/Volumes/dataops_lab/sdp_dev/raw` as the source volume.
 This is deliberate: source data is static CSV fixtures that do not vary between PRs.
-Input isolation is not needed; output isolation (schema-per-PR) prevents contention.
+Input isolation is not needed; output isolation (schema-per-PR) prevents contention — verified by concurrent live execution of two PRs (M22).
 
 ## Deployment model
 
