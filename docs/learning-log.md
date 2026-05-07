@@ -2069,3 +2069,44 @@ Knowit platform team or in a client workspace where the DataOps team has broader
 The workflow changes required are straightforward once the SP federation policy is in place.
 
 
+## 2026-05-07 — M26: pyspark.pipelines API Modernization
+
+**What I changed**
+Replaced `import dlt` with `import pyspark.pipelines as dlt` in `customer_pipeline.py`,
+`orders_pipeline.py`, and `gold_pipeline.py`. No other changes — all decorators
+(`@dlt.table`, `@dlt.expect_or_drop`, `@dlt.expect_or_fail`) and functions (`dlt.read()`)
+are identical through the alias. Removed the Known Limitation bullet and the Future API
+migration section from `architecture.md`.
+
+**What I observed**
+All seven flows completed successfully in both the PR pipeline (`sdp_pr_72`) and the prod
+pipeline (`sdp_prod`) on a full refresh. No import errors. Databricks Runtime version in
+use: `dlt:17.3.10-delta-pipelines`. `pyspark.pipelines` is confirmed stable on this runtime.
+Local tests (`pytest`) were unaffected — they test the logic modules directly and do not
+import the pipeline entrypoints.
+
+**What I learned**
+The alias pattern (`import pyspark.pipelines as dlt`) makes the migration zero-risk for
+downstream code — nothing else in the codebase changes. Local verification (`ruff`, `pytest`,
+`bundle validate`) is necessary but not sufficient: `bundle validate` passes regardless of
+whether `pyspark.pipelines` exists in the target runtime. The definitive check is a live
+pipeline run in Databricks. A wrong import path would surface as a `ModuleNotFoundError`
+on first flow execution, not at deploy time.
+
+**Practical conclusion**
+API modernization of this kind should be done early in a project, before the codebase grows.
+In this repo it was deferred until the end — that was acceptable because the alias pattern
+made it a one-line change per file with no risk of behavioral regression. The runtime version
+(`17.3.10`) should be noted when handing the repo to a new team: `pyspark.pipelines` was
+introduced progressively and the import path must be verified against whatever runtime the
+target workspace uses.
+
+**Current position**
+All three pipeline entrypoints use `pyspark.pipelines`. The `import dlt` legacy alias is gone.
+`pyspark.pipelines` confirmed stable on Databricks Runtime `dlt:17.3.10-delta-pipelines`.
+Prod pipeline verified with a full refresh after merge to main.
+
+**Remaining gaps**
+None. This was the last planned implementation milestone. The repo is complete.
+
+

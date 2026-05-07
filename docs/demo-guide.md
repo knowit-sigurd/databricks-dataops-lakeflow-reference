@@ -13,7 +13,7 @@ Open these in advance so you are not searching during the session:
 - Databricks workspace → Workflows → Pipelines
 - Databricks SQL editor with `sql/event_log_runs.sql` loaded
 - GitHub repo → `.github/workflows/deploy.yml`
-- VS Code (or the repo in a browser tab) with `pipelines/common.py` and `databricks.yml` ready
+- VS Code (or the repo in a browser tab) with `pipelines/customers.py` and `databricks.yml` ready
 
 ---
 
@@ -36,11 +36,11 @@ The pipeline model is a single `medallion_pipeline` resource. Bronze reads from 
 
 ## 2. Code structure and rules (8 min)
 
-**What to open:** `pipelines/common.py`, then `pipelines/customer_pipeline.py`, then `pipelines/customers.py`.
+**What to open:** `pipelines/customers.py`, then `pipelines/customer_pipeline.py`.
 
 **What to say:**
 
-Open `common.py` and show `CUSTOMER_RULES`. This dict is the single source of truth for data quality — it drives three things simultaneously: the `@dlt.expect_or_drop` decorators on the silver table, the logic that writes to `customers_rejected`, and the unit tests. Change a rule in one place and all three stay in sync automatically.
+Open `customers.py` and show `CUSTOMER_RULES`. This dict is the single source of truth for data quality — it drives three things simultaneously: the `@dlt.expect_or_drop` decorators on the silver table, the logic that writes to `customers_rejected`, and the unit tests. Change a rule in one place and all three stay in sync automatically.
 
 ```python
 CUSTOMER_RULES = {
@@ -49,7 +49,7 @@ CUSTOMER_RULES = {
 }
 ```
 
-Open `customer_pipeline.py` and show how the dict unpacks into decorators. Then open `customers.py` and show `build_rejected_customers` — it evaluates each rule independently and uses `concat_ws` to capture all failing reasons on a single row. A customer failing two rules gets both reasons, not just the first one.
+Open `customer_pipeline.py` and show how the dict unpacks into decorators. Then show `rejected_customers` back in `customers.py` — it evaluates each rule independently and uses `concat_ws` to capture all failing reasons on a single row. A customer failing two rules gets both reasons, not just the first one.
 
 Then show the `quality_mode` pattern in `customers.py`:
 
@@ -61,7 +61,7 @@ Same code runs in dev and prod. The variable is set in `databricks.yml` per targ
 
 **Expected questions:**
 
-- *"What if we need to add a new validation rule?"* — Add one entry to `CUSTOMER_RULES` in `common.py`. The decorator, the rejection capture, and the tests all pick it up automatically.
+- *"What if we need to add a new validation rule?"* — Add one entry to `CUSTOMER_RULES` in `customers.py`. The decorator, the rejection capture, and the tests all pick it up automatically.
 - *"Why `concat_ws` for rejection reasons?"* — `CASE WHEN` is first-match-wins. A row failing two rules would only record the first. `concat_ws` evaluates every rule independently and concatenates all failures — so analysts fix all violations at once instead of discovering them one at a time.
 - *"How are tests structured?"* — Unit tests run against local PySpark (in the devcontainer). They import the same rule dicts and transformation functions. The pipeline entrypoints (`customer_pipeline.py`) are not unit-tested — those require Databricks. `validate_counts.py` covers end-to-end correctness after a full pipeline run.
 
