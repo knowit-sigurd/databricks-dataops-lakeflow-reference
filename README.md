@@ -9,6 +9,8 @@ For a deeper look at the design decisions, environment model, data quality strat
 
 To demonstrate the repo to a client, see [docs/demo-guide.md](docs/demo-guide.md) (30-minute technical walkthrough for a data engineering lead) or [docs/demo-guide-exec.md](docs/demo-guide-exec.md) (10-minute executive overview).
 
+For first-time workspace setup, see [docs/setup.md](docs/setup.md). For operational procedures (prod trigger, full refresh, cleanup recovery), see [docs/runbook.md](docs/runbook.md).
+
 ## Project structure
 
 ```
