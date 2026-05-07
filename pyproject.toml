@@ -5,7 +5,7 @@ requires-python = ">=3.12"
 
 [dependency-groups]
 dev = [
-    "databricks-sdk>=0.20",
+    "databricks-sdk>=0.106.0",
     "pyspark>=3.5",
     "pytest>=8.0",
     "ruff>=0.4",
