@@ -1992,7 +1992,45 @@ update step. Making them configurable via `${localEnv:...}` would remove the ste
 candidate for a future cleanup if the repo is handed to a team.
 
 
-## 2026-05-07 — M24: OIDC Workload Identity Federation (not implemented)
+## 2026-05-07 — M25: UC Resource Management in DAB (not implemented)
+
+**What I investigated**
+DAB supports declaring Unity Catalog schemas and volumes as managed resources in `databricks.yml`,
+with grants expressed inline. This would make `sdp_prod` schema and volume reproducible from
+`bundle deploy` without manual SQL, and would move SP grants on that schema into version control.
+
+**What I observed**
+`bundle destroy` removes all resources declared in a target — not just the resources that use
+a specific variable. Declaring `sdp_dev` schema in the dev target would cause `cleanup-pr.yml`
+to drop it on every PR close, because cleanup runs `bundle destroy -t dev`. This is not
+recoverable — the schema and all its tables would be silently deleted each time any PR closes.
+The only safe target for DAB-managed schemas is one that is never destroyed programmatically,
+which in this repo is prod only. Reducing scope to a single schema (sdp_prod) gives limited
+return on the implementation risk, particularly given that the prod schema already exists and
+DAB's adoption behaviour for pre-existing resources needs verification before the first deploy.
+
+**What I learned**
+DAB's destroy semantics are all-or-nothing per target. This is the correct design for
+infrastructure-as-code — partial destroys are worse than full ones — but it means UC schemas
+should only be declared in DAB targets that have a well-understood destroy lifecycle. In this
+repo, the dev target is destroyed frequently and automatically; the prod target is never
+destroyed by automation. That boundary determines what DAB can safely own.
+
+**Practical conclusion**
+In a greenfield client deployment where DAB owns the infrastructure from day one, declaring
+schemas and volumes in DAB is the right pattern — they are created on first deploy and never
+destroyed accidentally. In a repo where schemas already exist and the dev target has an
+automated destroy path, the risk outweighs the benefit. Documented in `architecture.md`
+under Known Limitations.
+
+**Current position**
+Not implemented. UC schemas and volumes remain manually created via SQL in `docs/setup.md`.
+The pattern and constraint are documented in `architecture.md`.
+
+**Remaining gaps**
+In a client workspace where the dev schema lifecycle is controlled (e.g. not destroyed on
+PR close, or schemas are declared in a dedicated bootstrap target), DAB-managed UC resources
+are achievable and worth implementing.
 
 **What I investigated**
 The current CI setup stores a long-lived `DATABRICKS_CLIENT_SECRET` as a GitHub Actions secret.
