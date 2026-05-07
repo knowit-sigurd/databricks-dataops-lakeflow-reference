@@ -2109,4 +2109,23 @@ Prod pipeline verified with a full refresh after merge to main.
 **Remaining gaps**
 None. This was the last planned implementation milestone. The repo is complete.
 
+## G1 + G2 — GitHub Hygiene: Dependabot and PR Template (2026-05-07)
+
+**What I observed**
+The repo had three GitHub Actions workflows but no supply chain hygiene config and no PR template.
+Every PR had followed consistent validation steps manually, but that discipline was invisible to reviewers.
+
+**What I learned**
+Dependabot requires only a single YAML file to activate both dependency and GitHub Actions version tracking.
+A PR template makes implicit discipline explicit — it shifts validation from a personal habit to a repo-level contract.
+
+**Practical conclusion**
+Add these at project start, not as a cleanup step. The PR template is most valuable on the first PR, not the fifteenth.
+
+**Current position**
+- `.github/dependabot.yml`: weekly updates for pip and github-actions, limit 5 open PRs per ecosystem
+- `.github/PULL_REQUEST_TEMPLATE.md`: 5-item checklist covering lint, tests, deploy, run, validation, and screenshot
+
+**Remaining gaps**
+Dependabot PRs will require review and merge manually — no auto-merge configured (intentional for a reference repo).
 
