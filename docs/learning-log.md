@@ -1924,3 +1924,30 @@ The `event_log()` queries use the dev pipeline ID as the example. Prod pipeline 
 - Prod pipeline permissions are not managed by the bundle. In a client workspace with provisioned groups, the permissions block should reference a group name. Documented in M23 (setup.md).
 - Prod has no automated row count assertion. If the pipeline was previously run against an empty volume, a subsequent incremental run silently skips reprocessing gold — DLT streaming state considers it up to date. Discovered during M21 validation: `customers_silver` had 3 rows, `orders_silver` had 4 rows, `customer_order_summary` had 0. Full refresh resolved it. PR deployments catch this via `validate_counts.py`; prod does not.
 - Two-PR isolation proof (M22) not yet run.
+
+
+## 2026-05-07 — M22: Two-PR isolation proof
+
+**What I observed**
+- Opened two concurrent PRs (pr_66, pr_67) against main. Both `deploy-pr` jobs completed successfully and independently without any manual coordination.
+- Databricks workspace showed two distinct pipelines: `pr_66_medallion_pipeline` and `pr_67_medallion_pipeline`, each with a separate pipeline ID.
+- Catalog `dataops_lab` showed two distinct schemas: `sdp_pr_66` and `sdp_pr_67`, each with the full medallion table set (customers_bronze, customers_silver, customers_rejected, orders_bronze, orders_silver, orders_rejected, customer_order_summary). No cross-contamination between schemas.
+- Databricks workspace filesystem showed two separate DAB root paths: `.bundle/dataops-lab-sdp/dev/pr_66` and `.bundle/dataops-lab-sdp/dev/pr_67`.
+- Closing pr_66 triggered `cleanup-pr.yml`. The cleanup log confirmed `bundle destroy` targeted `/Workspace/Users/.../.bundle/dataops-lab-sdp/dev/pr_66` explicitly and deleted `pr_66_medallion_pipeline`. `sdp_pr_67` and `pr_67_medallion_pipeline` were unaffected.
+- Closing pr_67 triggered `cleanup-pr.yml` for the remaining resources. Workspace clean after both closures.
+- Neither proof PR was merged to main. The branches were throwaway vehicles; the only deliverable from M22 to main is this documentation.
+
+**What I learned**
+- The `root_path` isolation pattern in `databricks.yml` (M15) works end-to-end. It is not just a configuration claim — concurrent PRs genuinely cannot clobber each other's bundle state, pipelines, or output schemas.
+- The cleanup hardening from M21 (`--force`, grep-based not-found handling, pinned CLI version) made teardown safe and non-destructive to sibling PRs. A cleanup bug here would have been easy to miss without running the proof.
+- `databricks pipelines list` is not a valid CLI command in v0.298.0. UI verification was sufficient — the Databricks UI showed pipeline list, catalog schema tree, and workspace filesystem state clearly enough to confirm all pass conditions without CLI commands.
+
+**Practical conclusion**
+- The isolation model is verified by live execution. When demonstrating to clients: two engineers can push PRs simultaneously with no shared state risk. The workspace filesystem, catalog, and pipeline list are all visually inspectable in the UI — no CLI scripting needed for the demo.
+
+**Current position**
+- PR pipeline isolation verified by live concurrent execution. `demo-guide.md` wording updated to reflect verified status with specific PR numbers as evidence.
+
+**Remaining gaps**
+- Input isolation (raw volume `/Volumes/dataops_lab/sdp_dev/raw`) is not isolated by design — all PR pipelines share the same static fixture input. This is intentional and the correct approach for a reference repo with shared fixture data.
+- `validate_counts.py` has hardcoded expected row counts tightly coupled to fixture files. Any fixture change requires a matching code change. Flagged for a future cleanup milestone.

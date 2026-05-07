@@ -75,7 +75,7 @@ Same code runs in dev and prod. The variable is set in `databricks.yml` per targ
 
 Show the `targets` block. Two targets: `dev` and `prod`. The variables `target_schema`, `source_path`, and `quality_mode` are all scoped per target. The pipeline code is identical — only the runtime configuration differs.
 
-Show the `root_path` under each target. This is DAB state isolation — each PR deployment writes bundle state to a separate path under `~/.bundle/dataops-lab-sdp/dev/pr_<n>/`. Without this, closing any PR would destroy whichever pipeline was last deployed, not the one that PR owned.
+Show the `root_path` under each target. This is DAB state isolation — each PR deployment writes bundle state to a separate path under `~/.bundle/dataops-lab-sdp/dev/pr_<n>/`. Without this, closing any PR would destroy whichever pipeline was last deployed, not the one that PR owned. Verified: two concurrent PRs (pr_66, pr_67) ran simultaneously with fully isolated bundle state, schemas, and pipelines.
 
 Show the `permissions` block under the prod pipeline resource. Workspace-level ACL is declared in the bundle config, not set manually in the UI. What is in the repo is what is deployed.
 
@@ -84,7 +84,7 @@ Show `bundle.git.branch: main`. Informational annotation — it surfaces in `bun
 **Expected questions:**
 
 - *"What prevents someone from deploying to prod from a feature branch?"* — Two layers: `deploy.yml` has `if: github.ref_name == 'main'` on the prod job, and the GitHub `production` environment requires a named reviewer to approve. A local `bundle deploy -t prod` from any branch is still possible — this is a single-operator lab.
-- *"How does PR isolation work in practice?"* — Each PR gets `deployment_suffix=pr_<n>`, producing a pipeline named `pr_<n>_medallion_pipeline` writing to schema `sdp_pr_<n>`. When the PR closes, `cleanup-pr.yml` destroys the pipeline and drops the schema.
+- *"How does PR isolation work in practice?"* — Each PR gets `deployment_suffix=pr_<n>`, producing a pipeline named `pr_<n>_medallion_pipeline` writing to schema `sdp_pr_<n>`. When the PR closes, `cleanup-pr.yml` destroys the pipeline and drops the schema. Verified by live execution: closing pr_66 removed only pr_66's pipeline and schema; pr_67 was unaffected until its own PR was closed.
 
 ---
 

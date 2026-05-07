@@ -93,3 +93,4 @@ Ongoing maintenance is low. The CI/CD pipeline is self-operating. Platform updat
 
 - *"Do we need Databricks expertise on the team?"* — Yes, one data engineer who knows Databricks SDP and DAB. The patterns in this repo are standard — they align with Databricks documentation and best practices, so onboarding follows platform learning paths, not internal documentation.
 - *"What is not covered here?"* — Scheduled pipeline execution (this demo uses manual and CI-triggered runs), Auto Loader for streaming ingestion from cloud storage, and a staging environment. All three are natural next steps for a production deployment; none require rearchitecting what is here.
+
