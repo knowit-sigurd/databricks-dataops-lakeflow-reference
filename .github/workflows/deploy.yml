@@ -16,12 +16,12 @@ on:
 
 jobs:
   deploy-pr:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Databricks CLI
         run: |
@@ -129,7 +129,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install Databricks CLI
         run: |
