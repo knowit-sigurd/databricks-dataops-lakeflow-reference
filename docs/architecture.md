@@ -282,6 +282,7 @@ or incorrect.
 - `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod pipeline is owned by the CI service principal — its event log is inaccessible to human users without ownership transfer or account admin intervention.
 - This repo uses `import dlt` — the legacy Spark Declarative Pipelines API. The forward-compatible API is `pyspark.pipelines`. See [Future API migration](#future-api-migration-dlt--pysparkpipelines) below.
 - CI authentication uses a long-lived `DATABRICKS_CLIENT_SECRET` GitHub secret. The platform-native improvement is OIDC workload identity federation: GitHub Actions proves its identity via a short-lived cryptographic token, and Databricks issues a scoped access token in exchange — no stored secret, nothing to rotate. Configuring this requires Databricks account admin access (`accounts.cloud.databricks.com`) to set a federation policy on the service principal. That access is not available in this workspace. In a client deployment with a dedicated platform team, OIDC federation should be the default credential model for all CI/CD integrations.
+- UC schemas and volumes are created by manual SQL during setup (see `docs/setup.md`). DAB supports declaring schemas and volumes as managed resources with inline grants, which would make the prod schema reproducible from `bundle deploy` without manual SQL. Not implemented here because `bundle destroy` removes all resources in a target — declaring `sdp_dev` in the dev target would cause `cleanup-pr.yml` to drop it on every PR close. Only fixed, long-lived schemas in targets that are never destroyed programmatically are safe to declare in DAB. In this repo that is the prod target only, which reduces the improvement to a single schema. Documented as a pattern; the constraint is real.
 
 ## Schema evolution
 
@@ -340,3 +341,29 @@ pipeline files. A wrong import is a silent deploy-time failure, not a local test
 
 **Scope:** Four files — `customer_pipeline.py`, `orders_pipeline.py`, `gold_pipeline.py`,
 and any future pipeline entrypoints. One import line per file.
+
+## Future enrichment: Auto Loader bronze
+
+This repo ingests source data from static CSV files uploaded by `upload_data.sh` before
+each pipeline run. In a production deployment the correct pattern is Auto Loader
+(`cloudFiles` source format), which monitors a cloud storage location for new files
+and processes them incrementally as they arrive — no upload script, no manual trigger.
+
+**What would change:**
+
+- Bronze tables switch from `dlt.read_files()` or manual CSV reads to `dlt.read_stream()`
+  with `format="cloudFiles"` and a schema hint or schema location
+- `upload_data.sh` and the "Upload source data" CI step are removed
+- The pipeline becomes event-driven: new files landing in the volume trigger processing
+  automatically on the next scheduled or continuous run
+- CI would need a different validation strategy — row count assertions against static
+  fixture counts would no longer apply to a streaming bronze source
+
+**Why not implemented here:**
+
+This reference repo uses static fixture data to demonstrate data quality enforcement
+predictably. Auto Loader adds operational realism but removes the ability to assert
+exact row counts in CI, which is a core demonstration in the current design. The two
+patterns serve different purposes: static fixtures for controlled quality demos, Auto
+Loader for production ingestion pipelines. A production implementation would use Auto
+Loader from the start and validate with deviation thresholds rather than hard-coded counts.
