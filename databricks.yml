@@ -82,6 +82,10 @@ resources:
               spark.master: local[*]
             custom_tags:
               ResourceClass: SingleNode
+            aws_attributes:
+              ebs_volume_type: GENERAL_PURPOSE_SSD
+              ebs_volume_count: 1
+              ebs_volume_size: 32
       tasks:
         - task_key: run_pipeline
           pipeline_task:
