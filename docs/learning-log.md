@@ -2207,3 +2207,40 @@ the CLI help output.
 `databricks volumes create` requires `CREATE VOLUME` privilege for the service principal —
 verified when CI ran but not explicitly documented as a setup step.
 
+## 2026-05-08 — M29: Rule severity classification
+
+**What I observed**
+The binary quality model (drop in dev, fail in prod) treated every rule violation as
+equally critical. A null primary key and a missing optional field triggered the same
+pipeline behavior in production. The rejected tables had a reason string but no severity
+signal — a client reviewing the data could not distinguish a row that would halt a
+production pipeline from one that would only have been quarantined.
+
+**What I learned**
+Data quality rules have natural severity tiers: critical failures should halt production
+to protect downstream consumers; business-invalid rows should be quarantined without
+stopping the pipeline; warning-level issues can pass through with a logged expectation.
+DLT supports all three behaviors via `expect_or_fail`, `expect_or_drop`, and `expect`.
+The per-rule severity model makes these distinctions explicit in code and visible in the
+rejected table output.
+
+**Practical conclusion**
+Add `severity` to every rule at definition time, not as a later retrofit. The mapping from
+severity to DLT decorator belongs in the pipeline file where `quality_mode` is known — a
+single `expect_for()` helper resolves the right function from the two inputs. The rejected
+table gains `rejection_severity` and `rule_version` at no behavioral cost: they are additive
+columns and do not affect silver row counts or existing assertions.
+
+**Current position**
+- `CUSTOMER_RULES` and `ORDER_RULES` are dicts of `{condition, severity}`
+- `RULE_VERSION = "1.0"` defined in `customers.py` and `orders.py`
+- `rejected_customers` and `rejected_orders` emit `rejection_reason`,
+  `rejection_severity`, and `rule_version`
+- `expect_for(rule_name)` in each pipeline file resolves the correct DLT decorator
+- Silver row counts unchanged — all current violations are `critical` or `business_invalid`
+  and are still dropped
+
+**Remaining gaps**
+No `warning`-severity rules exist on current fields. The `warning` path through `expect_for`
+is exercised by the unit test suite but not by the live pipeline until a warning-severity
+rule is added in a future milestone.

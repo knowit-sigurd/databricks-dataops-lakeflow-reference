@@ -6,7 +6,17 @@ from customers import CUSTOMER_RULES, enrich_customers, rejected_customers, stan
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
 
-expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
+
+def expect_for(rule_name):
+    rule = CUSTOMER_RULES[rule_name]
+    if rule["severity"] == "critical":
+        fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
+    elif rule["severity"] == "business_invalid":
+        fn = dlt.expect_or_drop
+    else:
+        fn = dlt.expect
+    return fn(rule_name, rule["condition"])
+
 
 CUSTOMERS_SCHEMA = StructType([
     StructField("customer_id", LongType(), True),
@@ -26,12 +36,12 @@ def customers_bronze():
 
 
 @dlt.table(name="customers_silver", comment="Validated customers")
-@expect_fn("valid_customer_id", CUSTOMER_RULES["valid_customer_id"])
-@expect_fn("valid_customer_name", CUSTOMER_RULES["valid_customer_name"])
+@expect_for("valid_customer_id")
+@expect_for("valid_customer_name")
 def customers_silver():
     return enrich_customers(standardize_customers(dlt.read("customers_bronze")))
 
 
-@dlt.table(name="customers_rejected", comment="Rejected customer rows with reason")
+@dlt.table(name="customers_rejected", comment="Rejected customer rows with reason and severity")
 def customers_rejected():
     return rejected_customers(dlt.read("customers_bronze"))
