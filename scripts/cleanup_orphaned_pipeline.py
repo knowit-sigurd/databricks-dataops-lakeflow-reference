@@ -12,12 +12,14 @@ def main():
     w = WorkspaceClient()
 
     for p in w.pipelines.list_pipelines():
-        if p.name == name:
-            print(f"Deleting orphaned pipeline '{name}' ({p.pipeline_id})")
+        # DAB prefixes dev-target pipelines with "[dev <user>] " — match by
+        # suffix so this works whether or not the prefix is present.
+        if p.name == name or (p.name and p.name.endswith(f"] {name}")):
+            print(f"Deleting orphaned pipeline '{p.name}' ({p.pipeline_id})")
             w.pipelines.delete(pipeline_id=p.pipeline_id)
             return
 
-    print(f"No pipeline named '{name}' found — skipping")
+    print(f"No pipeline matching '{name}' found — skipping")
 
 
 if __name__ == "__main__":
