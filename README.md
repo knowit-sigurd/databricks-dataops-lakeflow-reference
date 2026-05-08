@@ -47,6 +47,10 @@ Schemas are also environment-scoped:
 
 Each PR gets a fully isolated environment: pipeline name, UC schema, and source volume are all scoped to `sdp_pr_<n>`. Schema and volume are destroyed on PR close. Verified by concurrent live execution of two PRs (M22).
 
+## Dev container
+
+The development environment is based on the [databricks-dev-container](https://github.com/Knowit-Objectnet/databricks-dev-container) — a community devcontainer for Databricks development. Contributions that improve the experience are welcome.
+
 ## Local development workflow
 
 Development is performed inside the VS Code devcontainer.
