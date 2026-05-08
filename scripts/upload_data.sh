@@ -9,11 +9,12 @@ case "$TARGET" in
     DATA_DIR="data/prod"
     ;;
   dev)
-    VOLUME="dbfs:/Volumes/dataops_lab/sdp_dev/raw"
+    SCHEMA=${2:-sdp_dev}
+    VOLUME="dbfs:/Volumes/dataops_lab/$SCHEMA/raw"
     DATA_DIR="data"
     ;;
   *)
-    echo "Usage: $0 [dev|prod]"
+    echo "Usage: $0 [dev|prod] [schema_name]"
     exit 1
     ;;
 esac

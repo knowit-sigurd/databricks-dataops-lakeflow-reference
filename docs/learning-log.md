@@ -2148,3 +2148,59 @@ Add `if: github.actor != 'dependabot[bot]'` to every deploy job from the start w
 **Remaining gaps**
 None. The fix is in place and the first batch of dependency updates is merged.
 
+## 2026-05-08 — M28: PR source path isolation
+
+**What I observed**
+The M22 two-PR isolation proof verified that schema, pipeline, and compute resources were
+isolated per PR. The gap not verified: both PRs wrote fixture CSVs to the same
+`/Volumes/dataops_lab/sdp_dev/raw/` path via the CI upload step. A concurrent upload from
+PR B overwrites PR A's files while PR A's pipeline is still reading bronze. The pipeline
+code only reads — the write is in the CI `Upload source data` step, which runs
+`databricks fs cp --overwrite` before the pipeline executes.
+
+The first fix used a per-PR subdirectory (`sdp_dev/raw/pr_<n>/`). This closed the overwrite
+race but was architecturally inconsistent: everything else for a PR lives under `sdp_pr_<n>`,
+not `sdp_dev`. A UC Volume cannot be created with `databricks fs mkdir` — the `pr_<n>/`
+subdirectory does not exist as a volume and `fs cp` will not create it. The correct fix
+creates a proper managed volume under the PR schema.
+
+`bundle deploy` is idempotent only when the DAB state file on the workspace is intact. When
+a previous deploy failed before state was written, the next run tries to CREATE a pipeline
+that already exists by name and the API rejects it. A pre-deploy `bundle destroy || true`
+clears stale state; it is a fast no-op when nothing exists.
+
+`databricks volumes create` takes positional arguments (`CATALOG_NAME SCHEMA_NAME NAME
+VOLUME_TYPE`), not `--flag` form — the CLI v2 is inconsistent about this across commands.
+
+**What I learned**
+Resource isolation in DataOps CI has three layers: compute (pipeline), namespace (schema),
+and data (source path). Apply the PR suffix to every mutable shared resource using the same
+`sdp_pr_<n>` boundary for all three. The workflow sequencing matters: bundle deploy must
+precede volume creation because the schema does not exist until after deploy. For PR re-runs,
+guard `volumes create` with an "already exists" check so it is safe to retry. Guard every
+`bundle deploy` with a preceding `bundle destroy || true` to clear stale state silently.
+Check the CLI usage string before assuming flag syntax mirrors the REST API field names.
+
+**Practical conclusion**
+When parameterising CI deployments with a run identifier, apply it to every mutable shared
+resource. `bundle deploy` is not unconditionally idempotent — pre-emptive destroy makes it
+so in CI. For `databricks volumes create`, use the positional argument form confirmed by
+the CLI help output.
+
+**Current position**
+- `upload_data.sh` accepts optional `schema_name` arg for dev target; derives volume path
+  as `/Volumes/dataops_lab/$SCHEMA/raw`; local dev default (`sdp_dev`) unchanged
+- `deploy.yml` step order for PR events: deploy bundle (creates `sdp_pr_<n>` schema) →
+  create PR volume (`databricks volumes create dataops_lab sdp_pr_<n> raw MANAGED`) →
+  upload source data → stop pipeline → run → assert counts
+- `deploy.yml` `Deploy bundle` step opens with `bundle destroy --auto-approve 2>/dev/null
+  || true` to clear stale state and prevent "already exists" collisions on re-runs
+- `cleanup-pr.yml`: `databricks schemas delete --force` drops the `sdp_pr_<n>` schema
+  including all tables and the managed `raw` volume — no separate volume delete step needed
+- Pipeline UI shows `source_path = /Volumes/dataops_lab/sdp_pr_<n>/raw`; volume appears
+  under `sdp_pr_<n>` in Catalog Explorer alongside the silver and gold tables
+
+**Remaining gaps**
+`databricks volumes create` requires `CREATE VOLUME` privilege for the service principal —
+verified when CI ran but not explicitly documented as a setup step.
+
