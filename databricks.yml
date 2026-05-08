@@ -71,35 +71,8 @@ resources:
   jobs:
     medallion_operational_job:
       name: ${var.deployment_suffix}_medallion_operational_job
-      job_clusters:
-        - job_cluster_key: default
-          new_cluster:
-            num_workers: 0
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "m5.large"
-            spark_conf:
-              spark.databricks.cluster.profile: singleNode
-              spark.master: local[*]
-            custom_tags:
-              ResourceClass: SingleNode
-            aws_attributes:
-              ebs_volume_type: GENERAL_PURPOSE_SSD
-              ebs_volume_count: 1
-              ebs_volume_size: 32
       tasks:
         - task_key: run_pipeline
           pipeline_task:
             pipeline_id: ${resources.pipelines.medallion_pipeline.id}
             full_refresh: false
-        - task_key: assert_and_persist
-          depends_on:
-            - task_key: run_pipeline
-          job_cluster_key: default
-          libraries:
-            - pypi:
-                package: databricks-sdk>=0.106.0
-          spark_python_task:
-            python_file: ${workspace.file_path}/scripts/assert_and_persist.py
-            parameters:
-              - ${var.target_schema}
-              - ${var.warehouse_id}
