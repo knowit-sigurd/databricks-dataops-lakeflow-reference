@@ -2368,3 +2368,19 @@ in the actual runtime context (DLT, job cluster, notebook) before committing to 
 No per-run identifier on bronze rows. `_ingested_at` is sufficient for traceability in
 this reference. A DLT-native run ID would require access to DLT system tables
 (`system.lakeflow`) which requires account admin access in this workspace.
+
+**Post-merge CI fix**
+`allow_duplicate_names: true` was added to the pipeline resource as a safety net for
+deploy failures. This caused the opposite of the intended effect: when the cleanup script
+failed to find an orphaned pipeline, the deploy created a new one alongside it, resulting
+in duplicate pipelines and jobs accumulating in the workspace. Removed.
+
+Root cause of duplicates: multiple commits on the same PR trigger concurrent `deploy-pr`
+runs. Without a concurrency guard, both runs pass cleanup (finding nothing because the
+other run hasn't created anything yet), then both create resources simultaneously. Fixed
+by adding a `concurrency` group to `deploy-pr` so only one deploy runs per PR at a time,
+with `cancel-in-progress: true` to discard stale runs when a new commit is pushed.
+
+`cleanup-pr.yml` was also missing `--var=source_path` in its `bundle destroy` call and
+did not call `cleanup_orphaned_pipeline.py` — orphaned jobs therefore survived PR close.
+Both gaps fixed.

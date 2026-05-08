@@ -46,7 +46,6 @@ resources:
   pipelines:
     medallion_pipeline:
       name: "${var.deployment_suffix}_medallion_pipeline"
-      allow_duplicate_names: true
       catalog: dataops_lab
       target: "${var.target_schema}"
       serverless: true
