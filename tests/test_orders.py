@@ -7,6 +7,7 @@ def test_order_rules_cover_required_fields():
     assert "valid_order_id" in ORDER_RULES
     assert "valid_customer_id" in ORDER_RULES
     assert "valid_amount" in ORDER_RULES
+    assert all("condition" in r and "severity" in r for r in ORDER_RULES.values())
 
 
 def test_rejected_orders_excludes_valid_rows(spark):
@@ -24,6 +25,8 @@ def test_rejected_orders_captures_null_amount(spark):
     )
     result = rejected_orders(df).collect()[0]
     assert result["rejection_reason"] == "VALID_AMOUNT"
+    assert result["rejection_severity"] == "business_invalid"
+    assert result["rule_version"] == "1.0"
 
 
 def test_rejected_orders_captures_null_order_id(spark):
@@ -33,6 +36,8 @@ def test_rejected_orders_captures_null_order_id(spark):
     )
     result = rejected_orders(df).collect()[0]
     assert result["rejection_reason"] == "VALID_ORDER_ID"
+    assert result["rejection_severity"] == "critical"
+    assert result["rule_version"] == "1.0"
 
 
 def test_rejected_orders_captures_null_customer_id(spark):

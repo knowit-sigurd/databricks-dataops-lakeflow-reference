@@ -6,7 +6,17 @@ from orders import ORDER_RULES, enrich_orders, rejected_orders
 quality_mode = spark.conf.get("quality_mode", "drop")
 source_path = spark.conf.get("source_path", "./data")
 
-expect_fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
+
+def expect_for(rule_name):
+    rule = ORDER_RULES[rule_name]
+    if rule["severity"] == "critical":
+        fn = dlt.expect_or_fail if quality_mode == "fail" else dlt.expect_or_drop
+    elif rule["severity"] == "business_invalid":
+        fn = dlt.expect_or_drop
+    else:
+        fn = dlt.expect
+    return fn(rule_name, rule["condition"])
+
 
 ORDERS_SCHEMA = StructType([
     StructField("order_id", LongType(), True),
@@ -26,13 +36,13 @@ def orders_bronze():
 
 
 @dlt.table(name="orders_silver", comment="Validated orders")
-@expect_fn("valid_order_id", ORDER_RULES["valid_order_id"])
-@expect_fn("valid_customer_id", ORDER_RULES["valid_customer_id"])
-@expect_fn("valid_amount", ORDER_RULES["valid_amount"])
+@expect_for("valid_order_id")
+@expect_for("valid_customer_id")
+@expect_for("valid_amount")
 def orders_silver():
     return enrich_orders(dlt.read("orders_bronze"))
 
 
-@dlt.table(name="orders_rejected", comment="Rejected orders with reason")
+@dlt.table(name="orders_rejected", comment="Rejected orders with reason and severity")
 def orders_rejected():
     return rejected_orders(dlt.read("orders_bronze"))

@@ -15,6 +15,7 @@ def test_standardize_customers_trims_values(spark):
 def test_customer_rules_cover_required_fields():
     assert "valid_customer_id" in CUSTOMER_RULES
     assert "valid_customer_name" in CUSTOMER_RULES
+    assert all("condition" in r and "severity" in r for r in CUSTOMER_RULES.values())
 
 
 def test_rejected_customers_excludes_valid_rows(spark):
@@ -32,6 +33,8 @@ def test_rejected_customers_captures_null_name(spark):
     )
     result = rejected_customers(df).collect()[0]
     assert result["rejection_reason"] == "VALID_CUSTOMER_NAME"
+    assert result["rejection_severity"] == "business_invalid"
+    assert result["rule_version"] == "1.0"
 
 
 def test_rejected_customers_captures_null_id(spark):
@@ -41,6 +44,8 @@ def test_rejected_customers_captures_null_id(spark):
     )
     result = rejected_customers(df).collect()[0]
     assert result["rejection_reason"] == "VALID_CUSTOMER_ID"
+    assert result["rejection_severity"] == "critical"
+    assert result["rule_version"] == "1.0"
 
 
 def test_enrich_customers_passes_through_email(spark):
