@@ -2,6 +2,7 @@
 set -euo pipefail
 
 TARGET=${1:-dev}
+PR_SUBDIR=${2:-}
 
 case "$TARGET" in
   prod)
@@ -13,10 +14,14 @@ case "$TARGET" in
     DATA_DIR="data"
     ;;
   *)
-    echo "Usage: $0 [dev|prod]"
+    echo "Usage: $0 [dev|prod] [pr_<number>]"
     exit 1
     ;;
 esac
+
+if [ -n "$PR_SUBDIR" ]; then
+  VOLUME="$VOLUME/$PR_SUBDIR"
+fi
 
 echo "Uploading data files to $VOLUME..."
 

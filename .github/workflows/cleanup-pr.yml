@@ -60,3 +60,25 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Delete PR source data
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set +e
+          OUTPUT=$(databricks fs rm \
+            "dbfs:/Volumes/dataops_lab/sdp_dev/raw/pr_${{ github.event.number }}" \
+            --recursive -t dev 2>&1)
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -qi "not found\|does not exist\|no such"; then
+              echo "Volume path not found — nothing to clean up"
+            else
+              echo "Volume delete failed with unexpected error"
+              exit 1
+            fi
+          fi
