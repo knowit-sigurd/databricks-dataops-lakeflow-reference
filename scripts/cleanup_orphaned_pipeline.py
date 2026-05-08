@@ -23,7 +23,7 @@ def cleanup_pipeline(w: WorkspaceClient, base_name: str) -> None:
 
 def cleanup_job(w: WorkspaceClient, base_name: str) -> None:
     deleted = False
-    for j in w.jobs.list(name=base_name):
+    for j in w.jobs.list():
         if j.settings and j.settings.name and matches(j.settings.name, base_name):
             print(f"Deleting orphaned job '{j.settings.name}' ({j.job_id})")
             w.jobs.delete(job_id=j.job_id)
