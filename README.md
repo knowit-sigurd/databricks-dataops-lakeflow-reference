@@ -1,6 +1,6 @@
-# databricks-dataops-lakeflow-reference
+# Databricks DataOps Reference Architecture
 
-A reference architecture for Databricks-native DataOps using Lakeflow / Spark Declarative
+A reference implementation of Databricks-native DataOps using Lakeflow / Spark Declarative
 Pipelines (SDP) and Databricks Asset Bundles (DAB). Demonstrates Git-driven pipeline
 promotion, schema-per-PR isolation, data quality enforcement, and a production approval gate
 — all using platform-native capabilities without a custom framework.
@@ -45,15 +45,13 @@ Schemas are also environment-scoped:
 | dev        | sdp_dev    | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
 | prod       | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
 
-Each PR gets a fully isolated environment: pipeline name, UC schema, and source volume are all scoped to `sdp_pr_<n>`. Schema and volume are destroyed on PR close. Verified by concurrent live execution of two PRs (M22).
+Each PR gets a fully isolated environment: pipeline name, UC schema, and source volume are all scoped to `sdp_pr_<n>`. Schema and volume are destroyed on PR close.
 
 ## Dev container
 
 The development environment is based on the [databricks-dev-container](https://github.com/Knowit-Objectnet/databricks-dev-container) — a community devcontainer for Databricks development. Contributions that improve the experience are welcome.
 
 ## Local development workflow
-
-Development is performed inside the VS Code devcontainer.
 
 Recommended local checks before creating a PR:
 
@@ -120,21 +118,17 @@ When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automat
 1. Runs `databricks bundle destroy` to remove `pr_<n>_medallion_pipeline` from the workspace
 2. Drops the `dataops_lab.sdp_pr_<n>` Unity Catalog schema and all its tables
 
-## Known limitations
+## Scope
 
-- No staging environment. A true staging target requires a separate workspace or UC catalog.
-  Current model: PR → `sdp_pr_<n>`, main → `sdp_prod`. No intermediate environment.
-- Dev and prod use separate fixture data. Dev fixtures contain intentionally bad rows to
-  demonstrate the rejection mechanism. Prod fixtures are clean so the pipeline completes.
-  In a production project the source volume would be populated by Auto Loader, not CI scripts.
-- Production deployment runs `bundle deploy` only — it does not trigger the pipeline or assert
-  row counts. PR deployments do validate execution (pipeline run + row count assertions).
-  Prod pipeline execution is operator-triggered via `prod_medallion_operational_job` in the
-  Databricks Workflows UI, or directly from the Pipelines UI for full refresh.
-  If prod was previously run against an empty volume, a subsequent incremental run will not
-  reprocess gold — DLT's streaming state considers it up to date. Use Full refresh to force
-  recomputation after data is loaded for the first time.
-- `event_log()` queries in `sql/` target the dev pipeline (owned by the local user). The prod
-  pipeline is owned by the CI service principal — `event_log()` requires pipeline ownership,
-  not just `CAN_VIEW`. `system.lakeflow` provides cross-pipeline observability but requires
-  account admin to grant `USE SCHEMA` access.
+- **No staging environment.** A true staging target requires a separate workspace or UC catalog.
+  Current promotion model: PR → `sdp_pr_<n>`, main → `sdp_prod`. No intermediate environment.
+- **Static fixture data.** Source volumes are populated by CI upload scripts, not Auto Loader.
+  Dev fixtures contain intentionally bad rows to demonstrate the rejection mechanism; prod
+  fixtures are clean. In a production project the source volume would be populated by Auto Loader.
+- **Production pipeline is operator-triggered.** `bundle deploy` deploys the pipeline definition
+  but does not run it. Execution is triggered manually via `prod_medallion_operational_job` in
+  the Databricks Workflows UI, or directly from the Pipelines UI for a full refresh. PR
+  deployments do run the pipeline and assert row counts as part of the CI gate.
+- **Observability queries require pipeline ownership.** `event_log()` queries in `sql/` work for
+  the dev pipeline (owned by the local user). The prod pipeline is owned by the CI service
+  principal. Cross-pipeline observability via `system.lakeflow` requires account admin access.
