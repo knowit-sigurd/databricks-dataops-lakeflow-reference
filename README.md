@@ -16,7 +16,7 @@ For first-time workspace setup, see [docs/setup.md](docs/setup.md). For operatio
 ```
 pipelines/          # SDP pipeline definitions (customer, orders, gold) + logic modules
 tests/              # Transformation unit tests (pytest)
-scripts/            # Utilities (upload_data.sh, stop_pipeline.py, validate_counts.py, assert_and_persist.py)
+scripts/            # Utilities (upload_data.sh, stop_pipeline.py, validate_counts.py, cleanup_orphaned_pipeline.py)
 fixtures/           # Expected row counts for CI assertions (expected_counts.json)
 sql/                # Observability queries (event log, rejection tables)
 data/               # Dev fixture CSVs (intentionally bad rows for rejection demo)

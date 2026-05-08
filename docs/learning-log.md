@@ -2267,8 +2267,7 @@ Third attempt — deploy succeeded, but running the job triggered "PERMISSION_DE
 are not authorized to create clusters." Cluster creation is a workspace-level privilege
 not granted to regular users in this Knowit workspace.
 
-Simplified to a single-task job: `run_pipeline` only. The `assert_and_persist` script
-and `fixtures/expected_counts.json` remain in the repo for when the constraint is lifted.
+Simplified to a single-task job: `run_pipeline` only.
 
 Expected counts moved from a hardcoded dict in `validate_counts.py` to
 `fixtures/expected_counts.json`. Both CI and the job script read from the same file.
@@ -2308,12 +2307,14 @@ requires editing one JSON file, not hunting through Python scripts.
 **Current position**
 - `medallion_operational_job` deployed in all targets — single task, `run_pipeline`
 - `fixtures/expected_counts.json` is the source of expected counts for CI (`validate_counts.py`)
-- `scripts/assert_and_persist.py` exists and is correct; not yet wired into the job
 - CI unchanged — `bundle run` + `validate_counts.py` continues as the PR gate
 - Runbook updated: operators use `prod_medallion_operational_job` as the primary prod trigger
+- `scripts/cleanup_orphaned_pipeline.py` added: deletes any pipeline or job left behind by
+  a failed deploy (DAB state-file gap — resources created but state not written)
 
 **Remaining gaps**
-The `assert_and_persist` task requires either `python_script_task` support in the bundled
-Terraform provider (CLI version upgrade) or cluster creation rights in the workspace.
-Until one of those is in place, the job runs the pipeline only. Row-count validation
-and run-summary persistence remain CI-only.
+Adding a post-pipeline assertion task to the job requires either cluster creation rights
+or `python_script_task` support in the bundled Terraform provider. Neither is available
+in this workspace. Row-count validation remains CI-only via `validate_counts.py`.
+The pattern (query counts, compare to fixture, persist summary row to Delta) is documented
+in architecture.md for implementation when constraints are lifted.
