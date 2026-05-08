@@ -21,6 +21,7 @@ esac
 
 if [ -n "$PR_SUBDIR" ]; then
   VOLUME="$VOLUME/$PR_SUBDIR"
+  databricks fs mkdir "$VOLUME" -t "$TARGET"
 fi
 
 echo "Uploading data files to $VOLUME..."
