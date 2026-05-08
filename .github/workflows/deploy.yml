@@ -139,7 +139,7 @@ jobs:
           # the pipeline is invisible to bundle destroy. Delete it by name so
           # bundle deploy can create a fresh one.
           uv run python scripts/cleanup_orphaned_pipeline.py \
-            ${{ steps.resolve_context.outputs.deployment_suffix }}_medallion_pipeline
+            ${{ steps.resolve_context.outputs.deployment_suffix }}
 
           databricks bundle validate \
             -t ${{ steps.resolve_context.outputs.target }} \
