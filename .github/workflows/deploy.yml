@@ -58,40 +58,29 @@ jobs:
           echo "Git ref: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
 
-      - name: Deploy bundle
+      - name: Create PR schema
+        if: github.event_name == 'pull_request'
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
-          # Destroy any stale state from a previous failed deploy so that
-          # bundle deploy can recreate the pipeline rather than failing on
-          # "already exists". Safe no-op when no state exists.
-          databricks bundle destroy \
-            -t ${{ steps.resolve_context.outputs.target }} \
-            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
-            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
-            --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
-            --auto-approve 2>/dev/null || true
-
-          databricks bundle validate \
-            -t ${{ steps.resolve_context.outputs.target }} \
-            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
-            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
-            --var=source_path=${{ steps.resolve_context.outputs.source_path }}
-
-          databricks bundle plan \
-            -t ${{ steps.resolve_context.outputs.target }} \
-            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
-            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
-            --var=source_path=${{ steps.resolve_context.outputs.source_path }}
-
-          databricks bundle deploy \
-            -t ${{ steps.resolve_context.outputs.target }} \
-            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
-            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
-            --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
-            --auto-approve
+          set +e
+          OUTPUT=$(databricks schemas create \
+            sdp_pr_${{ github.event.number }} \
+            dataops_lab \
+            -t dev 2>&1)
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -qi "already exists"; then
+              echo "Schema already exists — skipping creation"
+            else
+              echo "Schema creation failed with unexpected error"
+              exit 1
+            fi
+          fi
 
       - name: Create PR volume
         if: github.event_name == 'pull_request'
@@ -128,6 +117,41 @@ jobs:
           ./scripts/upload_data.sh \
             "${{ steps.resolve_context.outputs.target }}" \
             "${{ steps.resolve_context.outputs.target_schema }}"
+
+      - name: Deploy bundle
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          # Destroy any stale state from a previous failed deploy so that
+          # bundle deploy can recreate the pipeline rather than failing on
+          # "already exists". Safe no-op when no state exists.
+          databricks bundle destroy \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
+            --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
+            --auto-approve 2>/dev/null || true
+
+          databricks bundle validate \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
+            --var=source_path=${{ steps.resolve_context.outputs.source_path }}
+
+          databricks bundle plan \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
+            --var=source_path=${{ steps.resolve_context.outputs.source_path }}
+
+          databricks bundle deploy \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
+            --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
+            --auto-approve
 
       # workflow_dispatch deploys the bundle only — pipeline run and count assertions
       # are gated on pull_request events and do not execute on manual dispatch.

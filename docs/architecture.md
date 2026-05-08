@@ -80,34 +80,34 @@ Schema, source volume, and quality behavior are scoped per target.
 
 | Target | Schema     | Source volume                     | quality_mode | Retries |
 |--------|------------|-----------------------------------|--------------|---------|
-| PR     | sdp_pr_<n> | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
+| PR     | sdp_pr_<n> | /Volumes/dataops_lab/sdp_pr_<n>/raw | drop         | default |
 | dev    | sdp_dev    | /Volumes/dataops_lab/sdp_dev/raw  | drop         | default |
 | prod   | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw | fail         | 0       |
 
 PR-based deployments use `deployment_suffix=pr_<n>` and `target_schema=sdp_pr_<n>`,
-giving each PR an isolated pipeline name and an isolated Unity Catalog schema.
-
-All PR deployments share `/Volumes/dataops_lab/sdp_dev/raw` as the source volume.
-This is deliberate: source data is static CSV fixtures that do not vary between PRs.
-Input isolation is not needed; output isolation (schema-per-PR) prevents contention — verified by concurrent live execution of two PRs (M22).
+giving each PR a fully isolated environment: pipeline name, UC schema, and source volume
+are all scoped to `sdp_pr_<n>`. Concurrent PRs cannot share or overwrite each other's
+input data or output tables — verified by live concurrent execution (M22, M28).
 
 ## Deployment model
 
 Deployment is controlled through GitHub Actions and Databricks Asset Bundles.
-Source data is uploaded to the target volume before bundle deployment.
+Bundle deployment runs first to create the schema, then the volume is provisioned, then
+source data is uploaded.
 
 ```
 PR opened
-  → upload_data.sh dev
   → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n> --var=target_schema=sdp_pr_<n>
+  → creates pr_<n>_medallion_pipeline and schema dataops_lab.sdp_pr_<n>
+  → databricks volumes create dataops_lab sdp_pr_<n> raw MANAGED
+  → upload_data.sh dev sdp_pr_<n>
   → databricks bundle run medallion_pipeline --refresh-all
   → validate_counts.py asserts all 7 table row counts via SQL warehouse
-  → creates pr_<n>_medallion_pipeline writing to dataops_lab.sdp_pr_<n>
 
 PR closed (merged or abandoned)
   → databricks bundle destroy -t dev --var=deployment_suffix=pr_<n>
   → databricks schemas delete --force dataops_lab.sdp_pr_<n>
-  → removes pipeline resource and UC schema
+  → removes pipeline resource, UC schema, tables, and managed raw volume
 
 Merged to main
   → (pauses: GitHub production environment, required reviewer must approve)
@@ -282,7 +282,7 @@ or incorrect.
 ## Known limitations
 
 - `databricks.yml` variable substitution does not support string manipulation — naming logic must live in CI/CD.
-- Source volume is shared across all PR deployments (`sdp_dev/raw`). This is intentional: source data is static CSV fixtures. Isolation is on the output side (schema-per-PR).
+- Each PR deployment creates a dedicated managed UC Volume (`sdp_pr_<n>/raw`) for its source fixtures. The volume is destroyed with the schema on PR close. Full isolation — pipeline, schema, and source volume — is scoped to `sdp_pr_<n>`.
 - `upload_data.sh` uses separate fixture files for dev and prod. Dev fixtures (`data/`) contain intentionally bad rows to demonstrate the rejection mechanism. Prod fixtures (`data/prod/`) are clean — all rows pass validation rules, so the prod pipeline completes successfully. In a real project this volume would be populated by Auto Loader, not CI scripts.
 - Future: a staging target would require a separate workspace or UC catalog with its own schema namespace and credential scope. Out of scope for this reference lab.
 - CI row count assertions use hard-coded expected values derived from static fixture CSVs. In production, replace these with percentage deviation thresholds (e.g. fail if row count changes >20% vs previous run). This requires state persistence for previous counts — typically a Delta table or a monitoring integration. Not applicable here because fixture data never changes between runs.

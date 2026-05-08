@@ -2171,6 +2171,9 @@ clears stale state; it is a fast no-op when nothing exists.
 
 `databricks volumes create` takes positional arguments (`CATALOG_NAME SCHEMA_NAME NAME
 VOLUME_TYPE`), not `--flag` form — the CLI v2 is inconsistent about this across commands.
+Every Databricks CLI command in this project requires `-t <target>` to resolve the workspace
+host from the bundle config, including `volumes create` — this applies to `fs`, `volumes`,
+`schemas`, and bundle commands alike.
 
 **What I learned**
 Resource isolation in DataOps CI has three layers: compute (pipeline), namespace (schema),
