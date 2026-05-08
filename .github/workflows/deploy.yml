@@ -105,7 +105,7 @@ jobs:
             dataops_lab \
             sdp_pr_${{ github.event.number }} \
             raw \
-            MANAGED 2>&1)
+            MANAGED -t dev 2>&1)
           EXIT_CODE=$?
           set -e
           if [ $EXIT_CODE -ne 0 ]; then
