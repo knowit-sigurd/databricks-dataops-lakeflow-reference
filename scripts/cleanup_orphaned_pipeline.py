@@ -9,21 +9,27 @@ def matches(actual_name: str, base_name: str) -> bool:
 
 
 def cleanup_pipeline(w: WorkspaceClient, base_name: str) -> None:
-    for p in w.pipelines.list_pipelines():
+    # Use filter= to let the API narrow results server-side. Iterating all
+    # pipelines without a filter can miss results in large workspaces.
+    deleted = False
+    for p in w.pipelines.list_pipelines(filter=f"name LIKE '%{base_name}%'"):
         if p.name and matches(p.name, base_name):
             print(f"Deleting orphaned pipeline '{p.name}' ({p.pipeline_id})")
             w.pipelines.delete(pipeline_id=p.pipeline_id)
-            return
-    print(f"No pipeline matching '{base_name}' found — skipping")
+            deleted = True
+    if not deleted:
+        print(f"No pipeline matching '{base_name}' found — skipping")
 
 
 def cleanup_job(w: WorkspaceClient, base_name: str) -> None:
-    for j in w.jobs.list():
+    deleted = False
+    for j in w.jobs.list(name=base_name):
         if j.settings and j.settings.name and matches(j.settings.name, base_name):
             print(f"Deleting orphaned job '{j.settings.name}' ({j.job_id})")
             w.jobs.delete(job_id=j.job_id)
-            return
-    print(f"No job matching '{base_name}' found — skipping")
+            deleted = True
+    if not deleted:
+        print(f"No job matching '{base_name}' found — skipping")
 
 
 def main():

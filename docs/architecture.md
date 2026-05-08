@@ -327,6 +327,18 @@ Schema changes are categorized by the risk they carry for downstream consumers.
 Bronze `StructType` is the contract between source and pipeline. Any column not declared
 there is silently dropped at ingest — it never reaches silver or gold.
 
+### Bronze ingestion contract
+
+`customers_bronze` and `orders_bronze` carry two metadata columns added at ingest time:
+
+- `_source_file` — full path of the source file, using `_metadata.file_path` (the UC-native
+  column for file metadata; `input_file_name()` is blocked in Unity Catalog)
+- `_ingested_at` — pipeline execution timestamp via `current_timestamp()`
+
+These columns are appended with `.withColumn()` after the CSV read and are not part of the
+`StructType` schema definition. They answer the core ingestion traceability questions: where
+did this row come from, and when was it loaded?
+
 Silver inherits all columns from bronze unless a transformation explicitly removes them.
 `enrich_customers` uses `withColumn`, not `select`, so new bronze columns flow through
 to `customers_silver` automatically once declared in the schema.

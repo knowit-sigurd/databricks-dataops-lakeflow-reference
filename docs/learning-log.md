@@ -2318,3 +2318,53 @@ or `python_script_task` support in the bundled Terraform provider. Neither is av
 in this workspace. Row-count validation remains CI-only via `validate_counts.py`.
 The pattern (query counts, compare to fixture, persist summary row to Delta) is documented
 in architecture.md for implementation when constraints are lifted.
+
+---
+
+## 2026-05-08 — M31: Bronze metadata columns
+
+**What I observed**
+Added `_source_file` and `_ingested_at` to `customers_bronze` and `orders_bronze` using
+`.withColumn()` chained after the CSV read. First attempt used `F.input_file_name()` —
+this failed at pipeline runtime with `UC_COMMAND_NOT_SUPPORTED`: `input_file_name` is
+blocked in Unity Catalog. The error message gave the fix directly: use `_metadata.file_path`
+instead. `_metadata` is a hidden struct column Spark exposes when reading files; it is the
+UC-native replacement for the legacy `input_file_name()` function.
+
+A third column (`_ingest_run_id`) was planned using
+`spark.conf.get("spark.databricks.clusterUsageTags.runId", "unknown")`. This returned
+"unknown" in the DLT pipeline context — the conf key is not accessible there. The column
+was dropped rather than shipping a column that always contains a placeholder value.
+
+A Terraform state lineage mismatch error appeared on CI re-runs: `bundle destroy` on a
+fresh runner creates a new local state file with a new lineage, which conflicts with the
+remote state from the previous run. Fixed by deleting `.databricks/bundle` after
+`bundle destroy` in `deploy.yml` so `bundle deploy` uses the remote state cleanly.
+
+**What I learned**
+Unity Catalog enforces a stricter API surface than the non-UC Spark runtime. Legacy
+functions like `input_file_name()` are blocked; the UC-native `_metadata` struct is
+the correct approach. `_metadata.file_path` is available on any `DataFrameReader` when
+reading files — it is not a column in the schema, but can be referenced with `F.col()`
+after the read.
+
+Terraform remote state and local state are compared by lineage UUID, not just serial
+number. A fresh CI runner has no local state — but `bundle destroy` creates one. That
+newly-created file has a different lineage than the remote state, causing the mismatch.
+Deleting the local state directory after destroy is the clean reset.
+
+**Practical conclusion**
+Always use `_metadata.file_path` instead of `input_file_name()` in Unity Catalog
+workspaces. When planning ingestion metadata columns, verify conf keys are accessible
+in the actual runtime context (DLT, job cluster, notebook) before committing to them.
+
+**Current position**
+- `_source_file` and `_ingested_at` present in both bronze tables
+- Metadata columns propagate to silver and rejected tables; excluded from gold via explicit `.select()`
+- CI row count assertions unchanged — metadata columns are additive
+- Terraform state lineage fix in `deploy.yml` prevents mismatch on CI re-runs
+
+**Remaining gaps**
+No per-run identifier on bronze rows. `_ingested_at` is sufficient for traceability in
+this reference. A DLT-native run ID would require access to DLT system tables
+(`system.lakeflow`) which requires account admin access in this workspace.
