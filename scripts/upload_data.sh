@@ -2,7 +2,6 @@
 set -euo pipefail
 
 TARGET=${1:-dev}
-PR_SUBDIR=${2:-}
 
 case "$TARGET" in
   prod)
@@ -10,19 +9,15 @@ case "$TARGET" in
     DATA_DIR="data/prod"
     ;;
   dev)
-    VOLUME="dbfs:/Volumes/dataops_lab/sdp_dev/raw"
+    SCHEMA=${2:-sdp_dev}
+    VOLUME="dbfs:/Volumes/dataops_lab/$SCHEMA/raw"
     DATA_DIR="data"
     ;;
   *)
-    echo "Usage: $0 [dev|prod] [pr_<number>]"
+    echo "Usage: $0 [dev|prod] [schema_name]"
     exit 1
     ;;
 esac
-
-if [ -n "$PR_SUBDIR" ]; then
-  VOLUME="$VOLUME/$PR_SUBDIR"
-  databricks fs mkdir "$VOLUME" -t "$TARGET"
-fi
 
 echo "Uploading data files to $VOLUME..."
 

@@ -43,14 +43,12 @@ jobs:
             echo "target=dev" >> $GITHUB_OUTPUT
             echo "deployment_suffix=pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
             echo "target_schema=sdp_pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
-            echo "source_path=/Volumes/dataops_lab/sdp_dev/raw/pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
-            echo "upload_subdir=pr_${{ github.event.number }}" >> $GITHUB_OUTPUT
+            echo "source_path=/Volumes/dataops_lab/sdp_pr_${{ github.event.number }}/raw" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "target=${{ inputs.target }}" >> $GITHUB_OUTPUT
             echo "deployment_suffix=${{ inputs.target }}" >> $GITHUB_OUTPUT
             echo "target_schema=sdp_dev" >> $GITHUB_OUTPUT
             echo "source_path=/Volumes/dataops_lab/sdp_dev/raw" >> $GITHUB_OUTPUT
-            echo "upload_subdir=" >> $GITHUB_OUTPUT
           fi
 
       - name: Print deployment context
@@ -59,17 +57,6 @@ jobs:
           echo "Deployment suffix: ${{ steps.resolve_context.outputs.deployment_suffix }}"
           echo "Git ref: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
-
-      - name: Upload source data
-        env:
-          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-        run: |
-          chmod +x scripts/upload_data.sh
-          ./scripts/upload_data.sh \
-            "${{ steps.resolve_context.outputs.target }}" \
-            "${{ steps.resolve_context.outputs.upload_subdir }}"
 
       - name: Deploy bundle
         env:
@@ -95,6 +82,42 @@ jobs:
             --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
             --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
             --auto-approve
+
+      - name: Create PR volume
+        if: github.event_name == 'pull_request'
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          set +e
+          OUTPUT=$(databricks volumes create \
+            --catalog-name dataops_lab \
+            --schema-name sdp_pr_${{ github.event.number }} \
+            --name raw \
+            --volume-type MANAGED 2>&1)
+          EXIT_CODE=$?
+          set -e
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "$OUTPUT"
+            if echo "$OUTPUT" | grep -qi "already exists"; then
+              echo "Volume already exists — skipping creation"
+            else
+              echo "Volume creation failed with unexpected error"
+              exit 1
+            fi
+          fi
+
+      - name: Upload source data
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          chmod +x scripts/upload_data.sh
+          ./scripts/upload_data.sh \
+            "${{ steps.resolve_context.outputs.target }}" \
+            "${{ steps.resolve_context.outputs.target_schema }}"
 
       # workflow_dispatch deploys the bundle only — pipeline run and count assertions
       # are gated on pull_request events and do not execute on manual dispatch.
