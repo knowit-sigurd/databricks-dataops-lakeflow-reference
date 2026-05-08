@@ -18,6 +18,9 @@ jobs:
   deploy-pr:
     if: (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-pr-${{ github.event.number }}
+      cancel-in-progress: true
 
     steps:
       - name: Checkout repo
