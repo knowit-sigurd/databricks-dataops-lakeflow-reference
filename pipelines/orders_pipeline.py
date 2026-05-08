@@ -1,4 +1,5 @@
 import pyspark.pipelines as dlt
+import pyspark.sql.functions as F
 from pyspark.sql.types import DecimalType, LongType, StringType, StructField, StructType
 
 from orders import ORDER_RULES, enrich_orders, rejected_orders
@@ -32,6 +33,9 @@ def orders_bronze():
         spark.read.option("header", True)
         .schema(ORDERS_SCHEMA)
         .csv(f"{source_path}/orders.csv")
+        .withColumn("_source_file", F.input_file_name())
+        .withColumn("_ingested_at", F.current_timestamp())
+        .withColumn("_ingest_run_id", F.lit(spark.conf.get("spark.databricks.clusterUsageTags.runId", "unknown")))
     )
 
 
