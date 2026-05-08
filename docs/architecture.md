@@ -58,13 +58,32 @@ DLT uploads library files as a flat collection, so modules use bare imports
 
 ## Data quality
 
-Validation behavior is controlled by the `quality_mode` configuration variable,
-which is read at runtime via `spark.conf.get("quality_mode", "drop")`.
+Each validation rule carries a `severity` field that determines how violations are
+handled at runtime. `quality_mode` (read from `spark.conf.get("quality_mode", "drop")`)
+controls the behavior of `critical` rules only. The `expect_for()` helper in each
+pipeline file resolves the correct DLT decorator from both inputs.
 
-| Environment | quality_mode | On invalid row       |
-|-------------|--------------|----------------------|
-| dev / PR    | drop         | Row silently dropped |
-| prod        | fail         | Pipeline fails       |
+| Severity         | dev / PR (`quality_mode=drop`) | prod (`quality_mode=fail`) |
+|------------------|-------------------------------|---------------------------|
+| `critical`       | `expect_or_drop` — row dropped, pipeline continues | `expect_or_fail` — pipeline fails |
+| `business_invalid` | `expect_or_drop` — row dropped, pipeline continues | `expect_or_drop` — row dropped, pipeline continues |
+| `warning`        | `expect` — row passes through, expectation tracked | `expect` — row passes through, expectation tracked |
+
+Current rule classification:
+
+| Rule                 | Severity         | Field              |
+|----------------------|------------------|--------------------|
+| `valid_customer_id`  | `critical`       | `customer_id`      |
+| `valid_customer_name`| `business_invalid` | `customer_name`  |
+| `valid_order_id`     | `critical`       | `order_id`         |
+| `valid_customer_id` (orders) | `critical` | `customer_id`   |
+| `valid_amount`       | `business_invalid` | `amount`         |
+
+Rejected rows are written to `customers_rejected` / `orders_rejected` with three
+diagnostic columns: `rejection_reason` (comma-separated rule names, upper-cased),
+`rejection_severity` (highest severity for the row), and `rule_version` (currently `"1.0"`).
+A row failing both a `critical` and a `business_invalid` rule gets `rejection_severity = critical`
+because `coalesce` picks the first non-null value and rules are ordered critical-first in the dict.
 
 Production also disables automatic retries to ensure a clear failure signal:
 
