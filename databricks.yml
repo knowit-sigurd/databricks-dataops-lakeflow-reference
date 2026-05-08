@@ -13,6 +13,8 @@ variables:
     default: "/Volumes/dataops_lab/sdp_dev/raw"
   quality_mode:
     default: drop
+  warehouse_id:
+    default: "0bd7cc78c0abd6d9"
 
 targets:
   dev:
@@ -65,3 +67,12 @@ resources:
             path: ./pipelines/gold.py
         - file:
             path: ./pipelines/common.py
+
+  jobs:
+    medallion_operational_job:
+      name: ${var.deployment_suffix}_medallion_operational_job
+      tasks:
+        - task_key: run_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.medallion_pipeline.id}
+            full_refresh: false
