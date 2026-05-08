@@ -35,7 +35,6 @@ def orders_bronze():
         .csv(f"{source_path}/orders.csv")
         .withColumn("_source_file", F.col("_metadata.file_path"))
         .withColumn("_ingested_at", F.current_timestamp())
-        .withColumn("_ingest_run_id", F.lit(spark.conf.get("spark.databricks.clusterUsageTags.runId", "unknown")))
     )
 
 
