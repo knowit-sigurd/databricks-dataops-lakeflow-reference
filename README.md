@@ -40,12 +40,11 @@ Schemas are also environment-scoped:
 
 | Target     | Schema     | Source volume                      | On bad rows                |
 |------------|------------|------------------------------------|----------------------------|
-| PR         | sdp_pr_<n> | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
+| PR         | sdp_pr_<n> | /Volumes/dataops_lab/sdp_pr_<n>/raw | Drop row                   |
 | dev        | sdp_dev    | /Volumes/dataops_lab/sdp_dev/raw   | Drop row                   |
 | prod       | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
 
-PR deployments share the `sdp_dev` source volume — source data is static CSV fixtures,
-so input isolation is not needed. Output isolation (schema-per-PR) prevents contention — verified by concurrent live execution of two PRs (M22).
+Each PR gets a fully isolated environment: pipeline name, UC schema, and source volume are all scoped to `sdp_pr_<n>`. Schema and volume are destroyed on PR close. Verified by concurrent live execution of two PRs (M22).
 
 ## Local development workflow
 
@@ -71,11 +70,11 @@ scripts/upload_data.sh dev
 | Trigger          | Workflow       | What happens                                                             |
 |------------------|----------------|--------------------------------------------------------------------------|
 | Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`, run pipeline, assert counts |
-| PR closed        | Cleanup        | Destroy pipeline and drop `sdp_pr_<n>` schema                            |
+| PR closed        | Cleanup        | Destroy pipeline, drop `sdp_pr_<n>` schema and managed volume            |
 | Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod`                       |
 | Manual dispatch  | Deploy         | Deploy dev bundle only — pipeline not run, row counts not asserted       |
 
-The deploy workflow uploads source data to the target volume before running `bundle deploy`.
+For PR deployments the workflow order is: bundle deploy (creates schema) → create managed volume → upload source data → run pipeline → assert counts.
 
 Databricks credentials are stored as GitHub secrets:
 `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_WAREHOUSE_ID`.
