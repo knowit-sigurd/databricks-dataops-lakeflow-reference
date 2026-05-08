@@ -12,7 +12,7 @@ def cleanup_pipeline(w: WorkspaceClient, base_name: str) -> None:
     # Use filter= to let the API narrow results server-side. Iterating all
     # pipelines without a filter can miss results in large workspaces.
     deleted = False
-    for p in w.pipelines.list_pipelines(filter=base_name):
+    for p in w.pipelines.list_pipelines(filter=f"name LIKE '%{base_name}%'"):
         if p.name and matches(p.name, base_name):
             print(f"Deleting orphaned pipeline '{p.name}' ({p.pipeline_id})")
             w.pipelines.delete(pipeline_id=p.pipeline_id)
