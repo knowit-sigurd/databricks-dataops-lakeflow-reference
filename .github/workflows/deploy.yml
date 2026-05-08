@@ -67,8 +67,8 @@ jobs:
         run: |
           set +e
           OUTPUT=$(databricks schemas create \
-            --catalog-name dataops_lab \
-            --name sdp_pr_${{ github.event.number }} \
+            sdp_pr_${{ github.event.number }} \
+            dataops_lab \
             -t dev 2>&1)
           EXIT_CODE=$?
           set -e
