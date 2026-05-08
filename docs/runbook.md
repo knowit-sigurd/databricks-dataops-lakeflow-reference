@@ -77,6 +77,21 @@ databricks bundle destroy \
 databricks schemas delete --force dataops_lab.sdp_pr_<n>
 ```
 
+## Orphaned pipelines or jobs in the workspace
+
+If a deploy failed before DAB wrote its state file, the pipeline or job it created is not
+tracked by `bundle destroy` and will not be removed by `cleanup-pr.yml`. Remove them by
+name using the cleanup script:
+
+```bash
+# Replace <n> with the PR number
+uv run python scripts/cleanup_orphaned_pipeline.py pr_<n>
+```
+
+This deletes both `pr_<n>_medallion_pipeline` and `pr_<n>_medallion_operational_job` (and
+any DAB dev-prefixed variants like `[dev dataops_lab_sp] pr_<n>_medallion_pipeline`).
+Run it once per PR number that has orphaned resources.
+
 Verify in the Databricks UI:
 - Pipelines: `pr_<n>_medallion_pipeline` is gone
 - Catalog Explorer: `dataops_lab.sdp_pr_<n>` is gone
