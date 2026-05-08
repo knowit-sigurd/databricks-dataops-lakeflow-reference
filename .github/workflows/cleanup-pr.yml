@@ -17,6 +17,15 @@ jobs:
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/v0.298.0/install.sh | sh
 
+      - name: Install uv
+        run: |
+          curl -Ls https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen
+
       - name: Validate PR context
         run: |
           if [ -z "${{ github.event.number }}" ]; then
@@ -29,7 +38,7 @@ jobs:
           echo "Cleaning pipeline for PR: ${{ github.event.number }}"
           echo "Suffix: pr_${{ github.event.number }}"
 
-      - name: Destroy PR pipeline
+      - name: Destroy PR bundle
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
@@ -39,7 +48,16 @@ jobs:
             -t dev \
             --var=deployment_suffix=pr_${{ github.event.number }} \
             --var=target_schema=sdp_pr_${{ github.event.number }} \
+            --var=source_path=/Volumes/dataops_lab/sdp_pr_${{ github.event.number }}/raw \
             --auto-approve
+
+      - name: Delete orphaned pipeline and job if exists
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          uv run python scripts/cleanup_orphaned_pipeline.py pr_${{ github.event.number }}
 
       - name: Drop PR schema
         env:
