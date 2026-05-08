@@ -64,6 +64,16 @@ jobs:
           DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
+          # Destroy any stale state from a previous failed deploy so that
+          # bundle deploy can recreate the pipeline rather than failing on
+          # "already exists". Safe no-op when no state exists.
+          databricks bundle destroy \
+            -t ${{ steps.resolve_context.outputs.target }} \
+            --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
+            --var=target_schema=${{ steps.resolve_context.outputs.target_schema }} \
+            --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
+            --auto-approve 2>/dev/null || true
+
           databricks bundle validate \
             -t ${{ steps.resolve_context.outputs.target }} \
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
@@ -92,10 +102,10 @@ jobs:
         run: |
           set +e
           OUTPUT=$(databricks volumes create \
-            --catalog-name dataops_lab \
-            --schema-name sdp_pr_${{ github.event.number }} \
-            --name raw \
-            --volume-type MANAGED 2>&1)
+            dataops_lab \
+            sdp_pr_${{ github.event.number }} \
+            raw \
+            MANAGED 2>&1)
           EXIT_CODE=$?
           set -e
           if [ $EXIT_CODE -ne 0 ]; then
