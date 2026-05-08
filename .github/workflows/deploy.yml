@@ -141,6 +141,12 @@ jobs:
           uv run python scripts/cleanup_orphaned_pipeline.py \
             ${{ steps.resolve_context.outputs.deployment_suffix }}
 
+          # Remove the local Terraform state directory so bundle deploy uses
+          # the remote state cleanly. Without this, a fresh CI runner creates
+          # a new local state (new lineage) that conflicts with the remote
+          # state from a previous run, causing a lineage mismatch error.
+          rm -rf .databricks/bundle
+
           databricks bundle validate \
             -t ${{ steps.resolve_context.outputs.target }} \
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \
