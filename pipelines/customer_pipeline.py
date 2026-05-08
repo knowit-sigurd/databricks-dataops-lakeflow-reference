@@ -33,7 +33,7 @@ def customers_bronze():
         spark.read.option("header", True)
         .schema(CUSTOMERS_SCHEMA)
         .csv(f"{source_path}/customers.csv")
-        .withColumn("_source_file", F.input_file_name())
+        .withColumn("_source_file", F.col("_metadata.file_path"))
         .withColumn("_ingested_at", F.current_timestamp())
         .withColumn("_ingest_run_id", F.lit(spark.conf.get("spark.databricks.clusterUsageTags.runId", "unknown")))
     )
