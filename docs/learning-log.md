@@ -2244,3 +2244,76 @@ columns and do not affect silver row counts or existing assertions.
 No `warning`-severity rules exist on current fields. The `warning` path through `expect_for`
 is exercised by the unit test suite but not by the live pipeline until a warning-severity
 rule is added in a future milestone.
+
+## 2026-05-08 — M30: Lakeflow Job (orchestration layer)
+
+**What I observed**
+Added `medallion_operational_job` to the bundle — a DAB job resource that gives operators
+a single-click pipeline trigger from the Databricks Workflows UI. The implementation hit
+three successive deployment blockers before reaching a working state.
+
+First attempt used `python_script_task` (Databricks serverless task compute). The CLI v0.298.0
+JSON schema warned "unknown field" but still passed validation. At deploy time, the Terraform
+provider bundled with the CLI stripped the field entirely, resulting in "No task defined for
+assert_and_persist" — the API never received the task type.
+
+Second attempt switched to `spark_python_task` with a single-node `m5.large` cluster.
+Deploy succeeded but the task failed at runtime: "At least one EBS volume must be attached
+for clusters created with node type m5.large." AWS requires explicit EBS configuration for
+`m5` instances — there is no local NVMe storage on this family. Added `aws_attributes`
+with a 32GB `GENERAL_PURPOSE_SSD` volume.
+
+Third attempt — deploy succeeded, but running the job triggered "PERMISSION_DENIED: You
+are not authorized to create clusters." Cluster creation is a workspace-level privilege
+not granted to regular users in this Knowit workspace.
+
+Simplified to a single-task job: `run_pipeline` only. The `assert_and_persist` script
+and `fixtures/expected_counts.json` remain in the repo for when the constraint is lifted.
+
+Expected counts moved from a hardcoded dict in `validate_counts.py` to
+`fixtures/expected_counts.json`. Both CI and the job script read from the same file.
+
+**What I learned**
+DAB bundle validation (`bundle validate`) checks the YAML against the CLI's embedded JSON
+schema. "Unknown field" warnings do not prevent deployment — the field is passed to the
+Terraform provider. However, if the Terraform provider does not recognise the field, it
+is silently stripped at the API layer. The warning and the deployment failure are at
+different layers and require separate diagnosis.
+
+Serverless task compute (`python_script_task`) and classic cluster compute
+(`spark_python_task`) are different permission models. Serverless tasks require no cluster
+creation rights; classic cluster tasks do. In workspaces where cluster creation is
+restricted — common in enterprise environments where platform teams control compute — only
+serverless task types are usable by regular operators. The correct long-term fix is
+`python_script_task` on a CLI version whose Terraform provider supports it.
+
+The workspace runs on AWS. `m5` and similar general-purpose instance families require
+explicit EBS storage configuration. Instance families with local NVMe (`i3`, `i4i`)
+do not. On Azure, managed storage is included in the VM size and `aws_attributes` is
+not needed.
+
+**Practical conclusion**
+When a `bundle validate` warning says "unknown field", treat it as a risk flag for
+deployment, not a cosmetic lint issue. Confirm the field is recognised by the bundled
+Terraform provider before relying on it.
+
+A single-task job that triggers a pipeline still delivers meaningful operator value:
+it is a named, discoverable, auditable execution entry point in the Workflows UI.
+The assert and persist step is an enhancement, not a prerequisite.
+
+Extracting expected counts to `fixtures/expected_counts.json` is the correct
+separation: fixture data belongs in fixtures, not in assertion code. A fixture change
+requires editing one JSON file, not hunting through Python scripts.
+
+**Current position**
+- `medallion_operational_job` deployed in all targets — single task, `run_pipeline`
+- `fixtures/expected_counts.json` is the source of expected counts for CI (`validate_counts.py`)
+- `scripts/assert_and_persist.py` exists and is correct; not yet wired into the job
+- CI unchanged — `bundle run` + `validate_counts.py` continues as the PR gate
+- Runbook updated: operators use `prod_medallion_operational_job` as the primary prod trigger
+
+**Remaining gaps**
+The `assert_and_persist` task requires either `python_script_task` support in the bundled
+Terraform provider (CLI version upgrade) or cluster creation rights in the workspace.
+Until one of those is in place, the job runs the pipeline only. Row-count validation
+and run-summary persistence remain CI-only.

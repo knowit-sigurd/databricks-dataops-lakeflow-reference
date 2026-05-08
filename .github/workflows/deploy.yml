@@ -134,6 +134,13 @@ jobs:
             --var=source_path=${{ steps.resolve_context.outputs.source_path }} \
             --auto-approve 2>/dev/null || true
 
+          # bundle destroy only removes resources it tracked in state. If a
+          # previous deploy created the pipeline but failed before writing state,
+          # the pipeline is invisible to bundle destroy. Delete it by name so
+          # bundle deploy can create a fresh one.
+          uv run python scripts/cleanup_orphaned_pipeline.py \
+            ${{ steps.resolve_context.outputs.deployment_suffix }}
+
           databricks bundle validate \
             -t ${{ steps.resolve_context.outputs.target }} \
             --var=deployment_suffix=${{ steps.resolve_context.outputs.deployment_suffix }} \

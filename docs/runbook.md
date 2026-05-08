@@ -7,11 +7,19 @@ Operational procedures for day-to-day use of this repo.
 Production `bundle deploy` runs automatically after a merge to `main`, pending approval.
 The pipeline itself is **not** triggered by CI — it is operator-triggered.
 
-After `deploy-prod` completes in GitHub Actions:
+After `deploy-prod` completes in GitHub Actions, use either:
 
-1. `Workflows → Pipelines → prod_medallion_pipeline` in the Databricks UI
+**Option A — Operational job (preferred):**
+1. `Workflows → Jobs → prod_medallion_operational_job` in the Databricks UI
+2. Click `Run now`
+3. The job triggers `prod_medallion_pipeline` and completes when the pipeline finishes
+
+**Option B — Pipeline UI directly:**
+1. `Workflows → Pipelines → prod_medallion_pipeline`
 2. Click `Start` (incremental) or `Full refresh` — see the table below
 3. Monitor the run in the pipeline event log
+
+Use Option B when you need `Full refresh` — the operational job always runs incremental.
 
 ## Full refresh vs Start (incremental)
 
@@ -32,7 +40,7 @@ Full refresh.
 ## validate_counts.py fails on a PR
 
 The `Assert row counts` CI step runs `scripts/validate_counts.py` against `sdp_pr_<n>`.
-Row counts are hardcoded in the script against the dev fixture CSVs in `data/`.
+Expected counts are defined in `fixtures/expected_counts.json`.
 
 **Check the rejection tables first:**
 
@@ -50,8 +58,8 @@ SELECT * FROM dataops_lab.sdp_pr_<n>.orders_rejected;
 | `customer_order_summary` has 0 rows | Gold join failed — check `customers_silver` and `orders_silver` both have data, then check `gold.py` |
 | Query failed (not a count mismatch) | SP lacks `CAN USE` on the SQL warehouse, or `DATABRICKS_WAREHOUSE_ID` secret is wrong |
 
-If fixture data was intentionally changed, update `EXPECTED_COUNTS` in
-`scripts/validate_counts.py` to match the new row counts.
+If fixture data was intentionally changed, update `fixtures/expected_counts.json`
+to match the new row counts.
 
 ## PR cleanup failed or schema not removed
 
