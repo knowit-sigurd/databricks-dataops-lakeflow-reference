@@ -21,7 +21,8 @@ sql/                # Observability queries (event log, rejection tables)
 data/               # Dev fixture CSVs (intentionally bad rows for rejection demo)
 data/prod/          # Prod fixture CSVs (clean — all rows pass validation)
 docs/               # Architecture, learning log, demo guides
-.github/workflows/  # CI and deploy workflows
+.github/workflows/  # CI and deploy workflows (ci.yml, deploy.yml, cleanup-pr.yml)
+.github/            # Dependabot config (weekly pip + actions updates) + PR template
 databricks.yml      # Bundle config (targets: dev, prod)
 ```
 

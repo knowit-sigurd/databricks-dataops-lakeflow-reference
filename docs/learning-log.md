@@ -2129,3 +2129,22 @@ Add these at project start, not as a cleanup step. The PR template is most valua
 **Remaining gaps**
 Dependabot PRs will require review and merge manually — no auto-merge configured (intentional for a reference repo).
 
+## 2026-05-08 — Dependabot batch merge and deploy workflow fix
+
+**What I observed**
+Dependabot fired within hours of the G1+G2 merge and opened 6 PRs: `databricks-sdk`, `pyspark`, `pytest`, `ruff`, `setuptools`, and `actions/checkout`. The `deploy-pr` workflow triggered on each Dependabot PR and immediately failed — Databricks secrets (`DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`) are restricted for external actors including Dependabot, so authentication failed before any deployment step ran. CI (`ci.yml`) ran and passed on all 6 PRs, confirming the updated dependencies resolve correctly without needing Databricks access.
+
+**What I learned**
+Any `on: pull_request` job that requires repository secrets will fail for Dependabot PRs by default. GitHub restricts secret access for external actors to prevent credential exposure — the workflow runs but with empty secret values. This is not Databricks-specific; it applies to any deployment job guarded by secrets. The failure is predictable and systematic: every Dependabot PR would have hit it without the guard.
+
+**Practical conclusion**
+Add `if: github.actor != 'dependabot[bot]'` to every deploy job from the start when using Dependabot. Dependabot PRs touch dependency manifests only — they do not change pipeline logic and do not need Databricks validation. CI still runs on Dependabot PRs (lint and tests are fast and credential-free), which is the right behavior: verify the dependency resolves, skip the deployment. The guard belongs on the deploy job, not the CI job.
+
+**Current position**
+- `deploy.yml`: `deploy-pr` job guarded with `if: github.actor != 'dependabot[bot]'`
+- All 6 Dependabot PRs merged. `pyproject.toml` lower bounds updated: `databricks-sdk >=0.106.0`, `pyspark >=4.1.1`, `setuptools >=82.0.1`. All three workflow files updated to `actions/checkout@v6`.
+- Dependabot is operational and producing clean PRs. CI runs; deploy-pr is skipped.
+
+**Remaining gaps**
+None. The fix is in place and the first batch of dependency updates is merged.
+

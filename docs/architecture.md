@@ -120,6 +120,13 @@ Merged to main
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
 `databricks.yml` stays static — no string manipulation inside bundle configuration.
 
+The `deploy-pr` job is skipped for Dependabot (`if: github.actor != 'dependabot[bot]'`).
+Dependabot PRs update dependency manifests only — no pipeline logic changes, no Databricks
+deployment needed. GitHub restricts repository secrets for external actors, so any deploy
+job that requires secrets would fail silently for Dependabot PRs without this guard.
+The `ci` job (lint + tests) still runs on Dependabot PRs: it is credential-free and
+verifies the updated dependency resolves correctly before merge.
+
 Pipeline ownership is set at deploy time to the identity that ran `databricks bundle deploy`.
 In CI this is the service principal (`DATABRICKS_CLIENT_ID`). SDP pipelines have no `run_as`
 field — there is no mechanism to separate deploying identity from pipeline owner. In a
