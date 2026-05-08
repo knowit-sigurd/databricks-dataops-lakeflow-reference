@@ -1,0 +1,9 @@
+{
+  "customers_bronze": 3,
+  "customers_silver": 2,
+  "customers_rejected": 1,
+  "orders_bronze": 4,
+  "orders_silver": 3,
+  "orders_rejected": 1,
+  "customer_order_summary": 2
+}
