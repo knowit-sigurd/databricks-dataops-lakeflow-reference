@@ -1,7 +1,7 @@
 # Architecture
 
 A Databricks-native DataOps project using Spark Declarative Pipelines (SDP)
-and Databricks Asset Bundles (DAB) for Git-driven pipeline promotion.
+and Declarative Automation Bundles (DAB) for Git-driven pipeline promotion.
 
 ## Approach
 
@@ -110,7 +110,7 @@ input data or output tables — verified by live concurrent execution (M22, M28)
 
 ## Deployment model
 
-Deployment is controlled through GitHub Actions and Databricks Asset Bundles.
+Deployment is controlled through GitHub Actions and Declarative Automation Bundles.
 Bundle deployment runs first to create the schema, then the volume is provisioned, then
 source data is uploaded.
 
