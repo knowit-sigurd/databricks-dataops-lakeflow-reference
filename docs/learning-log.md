@@ -386,7 +386,7 @@ Introduced the first deployment-oriented skeleton.
 ## Week 4 Day 3
 
 ### Focus
-Introduced Databricks Asset Bundles (DAB) preview.
+Introduced Declarative Automation Bundles (DAB) preview.
 
 ### What I changed
 - Added `databricks.yml`
@@ -892,7 +892,7 @@ Remaining gaps:
 I successfully implemented and ran my first Spark Declarative Pipeline using serverless compute.
 
 - Pipeline defined using `@dlt.table` and `@dlt.expect`
-- Deployed via Databricks Asset Bundles
+- Deployed via Declarative Automation Bundles
 - Executed through Databricks pipeline UI (not jobs)
 
 I initially got an error requiring a catalog when using serverless, which I resolved by explicitly defining catalog and schema in `databricks.yml`.
@@ -1071,7 +1071,7 @@ Remaining gaps:
 ### What I observed
 I attempted to implement branch-based pipeline naming to create isolated pipelines per feature branch.
 
-However, Databricks Asset Bundles do not support string transformations (such as replacing `/` in branch names) within variable substitution.
+However, Declarative Automation Bundles do not support string transformations (such as replacing `/` in branch names) within variable substitution.
 
 This caused deployment errors, and I reverted to using:
 
@@ -1308,7 +1308,7 @@ Remaining gaps:
 ## Week 8 – Day 4 – PR-based deployment and quality modes
 
 ### What I observed
-I implemented PR-based deployment for SDP pipelines using GitHub Actions and Databricks Asset Bundles.
+I implemented PR-based deployment for SDP pipelines using GitHub Actions and Declarative Automation Bundles.
 
 The implementation now uses:
 - `deployment_suffix` to control pipeline names

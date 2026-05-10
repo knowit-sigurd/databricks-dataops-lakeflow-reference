@@ -1,7 +1,7 @@
 # Databricks DataOps Reference Architecture
 
 A reference implementation of Databricks-native DataOps using Lakeflow / Spark Declarative
-Pipelines (SDP) and Databricks Asset Bundles (DAB). Demonstrates Git-driven pipeline
+Pipelines (SDP) and Declarative Automation Bundles (DAB). Demonstrates Git-driven pipeline
 promotion, schema-per-PR isolation, data quality enforcement, and a production approval gate
 — all using platform-native capabilities without a custom framework.
 
@@ -30,7 +30,7 @@ databricks.yml      # Bundle config (targets: dev, prod)
 ## How it works
 
 Pipelines are defined declaratively in Python using the `pyspark.pipelines` API and deployed
-as Databricks Asset Bundles. Promotion is controlled entirely through Git.
+as Declarative Automation Bundles. Promotion is controlled entirely through Git.
 
 ```
 PR opened       →  deploys pr_<n>_medallion_pipeline to sdp_pr_<n>  (quality_mode: drop)
