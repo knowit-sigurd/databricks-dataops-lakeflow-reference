@@ -15,8 +15,38 @@ on:
         options: [dev]
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Detect code changes
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "code=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+          if [ -z "$CHANGED" ] || echo "$CHANGED" | grep -qvE '^(docs/.*|README\.md|\.github/PULL_REQUEST_TEMPLATE\.md)$'; then
+            echo "code=true" >> $GITHUB_OUTPUT
+            echo "Code changes detected — deploy will run"
+          else
+            echo "code=false" >> $GITHUB_OUTPUT
+            echo "Docs-only change — deploy will be skipped"
+          fi
+
   deploy-pr:
-    if: (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') && github.actor != 'dependabot[bot]'
+    needs: changes
+    if: |
+      (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
+      github.actor != 'dependabot[bot]' &&
+      needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-pr-${{ github.event.number }}
