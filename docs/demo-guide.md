@@ -131,14 +131,14 @@ Note that these queries target `sdp_dev` — swap the schema name to `sdp_prod` 
 
 **What to say:**
 
-Show `deploy.yml`. The `deploy-pr` job runs on every PR. It uploads data, deploys the bundle, stops any active pipeline, runs `--refresh-all`, then asserts row counts via `validate_counts.py`. This is not a syntax check — it is a full Databricks pipeline execution with correctness validation.
+Show `deploy.yml`. The `deploy-pr` job runs on every PR with code changes. It uploads data, deploys the bundle, stops any active pipeline, runs `--refresh-all`, then asserts row counts via `validate_counts.py`. This is not a syntax check — it is a full Databricks pipeline execution with correctness validation. For docs-only PRs (changes only in `docs/`, `README.md`, or the PR template), `deploy-pr` is skipped automatically and the PR completes in ~7s.
 
-Open a recent merged PR and show the checks. `CI / ci` (lint + unit tests, ~1 min) and `Deploy SDP Pipelines / deploy-pr` (~5 min) are both required gates. The merge button is blocked until both pass. This means a PR cannot merge until the pipeline has run successfully on Databricks.
+Open a recent merged PR and show the checks. `CI / ci` (lint + unit tests, ~1 min) and `Deploy SDP Pipelines / deploy-pr` (~5 min for code changes) are both required gates. The merge button is blocked until both pass. This means a PR cannot merge until the pipeline has run successfully on Databricks — unless it is a docs-only PR, in which case deploy-pr is skipped and GitHub treats "skipped" as passing.
 
 Show `deploy-prod`. It only triggers on push to `main` and requires approval through the GitHub `production` environment — a named reviewer must click approve before the deployment runs. Every production release has an audit trail: who approved, when, what commit.
 
 **Expected questions:**
 
-- *"What if the pipeline takes too long on every PR?"* — It does (~5 min). That is deliberate: `deploy-pr` is the primary correctness signal. The alternative — skipping the Databricks run — means tests pass but the pipeline might fail in prod. The race condition that happens when a merge occurs while deploy-pr is still running is exactly why deploy-pr is a required gate.
+- *"What if the pipeline takes too long on every PR?"* — For code changes it takes ~5 min. That is deliberate: `deploy-pr` is the primary correctness signal. The alternative — skipping the Databricks run — means tests pass but the pipeline might fail in prod. For documentation-only PRs the deploy is skipped automatically and the check completes in ~7s. The race condition that happens when a merge occurs while deploy-pr is still running is exactly why deploy-pr is a required gate.
 - *"What happens when a PR is closed without merging?"* — `cleanup-pr.yml` runs automatically. It destroys the bundle and drops the PR schema from Unity Catalog. The catalog stays clean regardless of how many PRs are opened and abandoned.
 - *"How do we handle hotfixes?"* — Same path as any change: PR → CI → deploy-pr → merge → prod approval. The process does not have a bypass. In a real setup you would configure a shorter fixture dataset for hotfix branches to reduce the deploy-pr wait time.

@@ -115,7 +115,7 @@ Bundle deployment runs first to create the schema, then the volume is provisione
 source data is uploaded.
 
 ```
-PR opened
+PR opened (code change)
   → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n> --var=target_schema=sdp_pr_<n>
   → creates pr_<n>_medallion_pipeline and schema dataops_lab.sdp_pr_<n>
   → databricks volumes create dataops_lab sdp_pr_<n> raw MANAGED
@@ -123,28 +123,40 @@ PR opened
   → databricks bundle run medallion_pipeline --refresh-all
   → validate_counts.py asserts all 7 table row counts via SQL warehouse
 
-PR closed (merged or abandoned)
+PR opened (docs-only: changes only in docs/, README.md, .github/PULL_REQUEST_TEMPLATE.md)
+  → deploy-pr skipped — reported as "skipped" by GitHub, satisfies required status check
+  → completes in ~7s
+
+PR closed (merged or abandoned, code change)
   → databricks bundle destroy -t dev --var=deployment_suffix=pr_<n>
   → databricks schemas delete --force dataops_lab.sdp_pr_<n>
   → removes pipeline resource, UC schema, tables, and managed raw volume
 
-Merged to main
+PR closed (docs-only)
+  → cleanup skipped — nothing was deployed, nothing to destroy
+
+Merged to main (code change)
   → (pauses: GitHub production environment, required reviewer must approve)
   → upload_data.sh prod
   → databricks bundle deploy -t prod --var=deployment_suffix=prod
   → updates prod_medallion_pipeline writing to dataops_lab.sdp_prod
   → prod pipeline execution is operator-triggered, not CI-triggered
+
+Merged to main (docs-only)
+  → deploy-prod skipped — no approval prompt, no wait
 ```
 
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
 `databricks.yml` stays static — no string manipulation inside bundle configuration.
 
-The `deploy-pr` job is skipped for Dependabot (`if: github.actor != 'dependabot[bot]'`).
-Dependabot PRs update dependency manifests only — no pipeline logic changes, no Databricks
-deployment needed. GitHub restricts repository secrets for external actors, so any deploy
-job that requires secrets would fail silently for Dependabot PRs without this guard.
-The `ci` job (lint + tests) still runs on Dependabot PRs: it is credential-free and
-verifies the updated dependency resolves correctly before merge.
+The `deploy-pr` job is skipped in two cases. First, for Dependabot PRs
+(`if: github.actor != 'dependabot[bot]'`): Dependabot updates dependency manifests only,
+GitHub restricts secrets for external actors, and any deploy would fail silently without
+this guard. Second, for docs-only PRs: a `changes` job runs first and queries the GitHub
+API for the PR's changed files; if all files are under `docs/`, `README.md`, or
+`.github/PULL_REQUEST_TEMPLATE.md`, `deploy-pr` is skipped. GitHub reports a skipped job
+as "skipped", which satisfies the required status check. The `ci` job (lint + tests) runs
+in both cases.
 
 Pipeline ownership is set at deploy time to the identity that ran `databricks bundle deploy`.
 In CI this is the service principal (`DATABRICKS_CLIENT_ID`). SDP pipelines have no `run_as`
@@ -206,10 +218,12 @@ Local dev (VS Code + devcontainer)
   ↓  uv run ruff check / pytest
 Feature branch → PR to main
   ↓  CI / ci must pass (lint + tests) — required gate
-  ↓  Deploy SDP Pipelines / deploy-pr must pass (deploy + pipeline run + row counts) — required gate
+  ↓  Deploy SDP Pipelines / deploy-pr — required gate
+       code change: deploy + pipeline run + row counts (~5 min)
+       docs-only:   skipped, satisfies required check (~7s)
 Merge to main
-  ↓  deploy-prod triggered, pauses for approval
-  ↓  approved → bundle deploy to sdp_prod
+  ↓  code change: deploy-prod triggered, pauses for approval → bundle deploy to sdp_prod
+  ↓  docs-only:   deploy-prod skipped, no approval prompt
 Databricks pipeline execution (serverless)
 ```
 
@@ -228,11 +242,13 @@ The `main` branch requires a pull request before merging. Direct pushes are bloc
 | Allow bypassing rules | Disabled — applies to admins too |
 
 Both checks are required gates. `CI / ci` (lint + tests, ~1 min) verifies correctness
-locally. `Deploy SDP Pipelines / deploy-pr` (deploy + pipeline run + row counts, ~5 min)
-verifies the full Databricks execution path. Requiring deploy-pr to complete before merge
-eliminates the race condition where `cleanup-pr.yml` runs concurrently with a still-running
-`bundle run` and destroys the pipeline mid-execution. If deploy-pr has not completed, the
-merge button is blocked — the cleanup workflow then runs against an idle, finished deployment.
+locally. `Deploy SDP Pipelines / deploy-pr` verifies the full Databricks execution path for
+code changes (~5 min: deploy + pipeline run + row counts); for docs-only PRs it is skipped
+in ~7s and GitHub treats "skipped" as satisfying the required check. Requiring deploy-pr to
+complete before merge eliminates the race condition where `cleanup-pr.yml` runs concurrently
+with a still-running `bundle run` and destroys the pipeline mid-execution. If deploy-pr has
+not completed, the merge button is blocked — the cleanup workflow then runs against an idle,
+finished deployment.
 
 ## Monitoring and alerting
 
