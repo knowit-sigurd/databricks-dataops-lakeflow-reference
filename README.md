@@ -70,14 +70,15 @@ scripts/upload_data.sh dev
 
 ## CI/CD
 
-| Trigger          | Workflow       | What happens                                                             |
-|------------------|----------------|--------------------------------------------------------------------------|
-| Pull request     | CI + Deploy    | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`, run pipeline, assert counts |
-| PR closed        | Cleanup        | Destroy pipeline, drop `sdp_pr_<n>` schema and managed volume            |
-| Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod`                       |
-| Manual dispatch  | Deploy         | Deploy dev bundle only — pipeline not run, row counts not asserted       |
+| Trigger          | Workflow       | What happens                                                                                      |
+|------------------|----------------|---------------------------------------------------------------------------------------------------|
+| Pull request (code change) | CI + Deploy | Lint, test, deploy `pr_<n>` to `sdp_pr_<n>`, run pipeline, assert counts          |
+| Pull request (docs-only)   | CI only     | Lint and tests run; deploy skipped — completes in ~7s                              |
+| PR closed        | Cleanup        | Destroy pipeline, drop `sdp_pr_<n>` schema and managed volume (skipped for docs-only PRs)        |
+| Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod` (skipped for docs-only merges)                |
+| Manual dispatch  | Deploy         | Deploy dev bundle only — pipeline not run, row counts not asserted                                |
 
-For PR deployments the workflow order is: bundle deploy (creates schema) → create managed volume → upload source data → run pipeline → assert counts.
+Docs-only is defined as changes exclusively in `docs/`, `README.md`, or `.github/PULL_REQUEST_TEMPLATE.md`. For code PRs the deploy order is: bundle deploy (creates schema) → create managed volume → upload source data → run pipeline → assert counts.
 
 Databricks credentials are stored as GitHub secrets:
 `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_WAREHOUSE_ID`.

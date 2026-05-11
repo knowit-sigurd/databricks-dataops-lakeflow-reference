@@ -65,7 +65,7 @@ This means data quality is not a test that runs separately and can be skipped un
 
 No code reaches production without passing two automated gates and one human gate.
 
-The two automated gates run on every pull request: unit tests plus lint (~1 minute), and a full Databricks pipeline execution with row count assertions (~5 minutes). The merge button is blocked until both pass. This means the pipeline must run successfully on Databricks before any code can merge — not just locally, not just in tests.
+The two automated gates run on every pull request with code changes: unit tests plus lint (~1 minute), and a full Databricks pipeline execution with row count assertions (~5 minutes). The merge button is blocked until both pass. This means the pipeline must run successfully on Databricks before any code can merge — not just locally, not just in tests. For documentation-only changes the Databricks deploy is skipped automatically and the PR completes in ~7s.
 
 The human gate is a GitHub `production` environment. After a PR merges to main, the production deployment pauses and waits for a named reviewer to approve. Every production release has an audit trail: who approved, when, and what commit was deployed.
 
@@ -73,7 +73,7 @@ The result is that the team knows — with certainty — what is running in prod
 
 **Expected questions:**
 
-- *"How long does a deployment take?"* — About 5 minutes for the PR pipeline run, then a few minutes for the production deploy after approval. The time is dominated by the Databricks pipeline execution, which is also the correctness proof.
+- *"How long does a deployment take?"* — About 5 minutes for the PR pipeline run, then a few minutes for the production deploy after approval. The time is dominated by the Databricks pipeline execution, which is also the correctness proof. Documentation-only PRs skip the deploy entirely and complete in ~7s.
 - *"What if we need to deploy urgently?"* — The process does not have a bypass. In a genuine emergency the approval step takes seconds — a reviewer clicks approve. The automated gates always run. That is the point: speed comes from a stable process, not from skipping checks.
 - *"What does it cost to run on every PR?"* — Serverless pipeline compute is billed per DBU per second. A full run of this reference pipeline completes in under 2 minutes. At production scale with larger datasets, the fixture size would be reduced for PR pipelines to control cost.
 
