@@ -1,7 +1,7 @@
 # Databricks DataOps Reference Architecture
 
 A reference implementation of Databricks-native DataOps using Lakeflow / Spark Declarative
-Pipelines (SDP) and Declarative Automation Bundles (DAB). Demonstrates Git-driven pipeline
+Pipelines (SDP) and Declarative Automation Bundles (DAB). Demonstrates a Git-driven pipeline
 promotion, schema-per-PR isolation, data quality enforcement, and a production approval gate
 — all using platform-native capabilities without a custom framework.
 
