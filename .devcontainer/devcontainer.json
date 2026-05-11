@@ -24,7 +24,9 @@
         "ms-python.python",
         "charliermarsh.ruff",
         "usernamehw.errorlens",
-        "anthropic.claude-code"
+        "anthropic.claude-code",
+        "ms-vscode.azure-repos",
+        "ms-azure-devops.azure-pipelines"
       ]
     }
   }
