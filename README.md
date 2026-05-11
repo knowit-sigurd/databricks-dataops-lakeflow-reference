@@ -132,3 +132,4 @@ When a PR is closed (merged or abandoned), the `cleanup-pr.yml` workflow automat
 - **Observability queries require pipeline ownership.** `event_log()` queries in `sql/` work for
   the dev pipeline (owned by the local user). The prod pipeline is owned by the CI service
   principal. Cross-pipeline observability via `system.lakeflow` requires account admin access.
+
