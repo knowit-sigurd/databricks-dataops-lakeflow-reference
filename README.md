@@ -16,7 +16,7 @@ For first-time workspace setup, see [docs/setup.md](docs/setup.md). For operatio
 ```
 pipelines/          # SDP pipeline definitions (customer, orders, gold) + logic modules
 tests/              # Transformation unit tests (pytest)
-scripts/            # Utilities (upload_data.sh, stop_pipeline.py, validate_counts.py, cleanup_orphaned_pipeline.py)
+scripts/            # Utilities (upload_data.sh, stop_pipeline.py, validate_counts.py, assert_job_output.py, cleanup_orphaned_pipeline.py)
 fixtures/           # Expected row counts for CI assertions (expected_counts.json)
 sql/                # Observability queries (event log, rejection tables)
 data/               # Dev fixture CSVs (intentionally bad rows for rejection demo)
@@ -78,7 +78,7 @@ scripts/upload_data.sh dev
 | Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod` (skipped for docs-only merges)                |
 | Manual dispatch  | Deploy         | Deploy dev bundle only — pipeline not run, row counts not asserted                                |
 
-Docs-only is defined as changes exclusively in `docs/`, `README.md`, or `.github/PULL_REQUEST_TEMPLATE.md`. For code PRs the deploy order is: bundle deploy (creates schema) → create managed volume → upload source data → run pipeline → assert counts.
+Docs-only is defined as changes exclusively in `docs/`, `README.md`, or `.github/PULL_REQUEST_TEMPLATE.md`. For code PRs the deploy order is: create schema (CLI) → create managed volume (CLI) → upload source data → bundle deploy (creates pipeline + job) → run pipeline → assert counts.
 
 Databricks credentials are stored as GitHub secrets:
 `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_WAREHOUSE_ID`.
