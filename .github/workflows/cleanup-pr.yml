@@ -11,13 +11,14 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
     steps:
-      - uses: actions/checkout@v6
-
       - name: Detect code changes
         id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git fetch origin ${{ github.base_ref }} --depth=1
-          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          CHANGED=$(gh pr view ${{ github.event.number }} \
+            --repo ${{ github.repository }} \
+            --json files --jq '.files[].path')
           echo "Changed files:"
           echo "$CHANGED"
           if [ -z "$CHANGED" ] || echo "$CHANGED" | grep -qvE '^(docs/.*|README\.md|\.github/PULL_REQUEST_TEMPLATE\.md)$'; then
