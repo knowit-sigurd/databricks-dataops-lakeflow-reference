@@ -160,11 +160,19 @@ API for the PR's changed files; if all files are under `docs/`, `README.md`, or
 as "skipped", which satisfies the required status check. The `ci` job (lint + tests) runs
 in both cases.
 
-Pipeline ownership is set at deploy time to the identity that ran `databricks bundle deploy`.
-In CI this is the service principal (`DATABRICKS_CLIENT_ID`). SDP pipelines have no `run_as`
-field — there is no mechanism to separate deploying identity from pipeline owner. In a
-production deployment, the deploying identity should be a dedicated data-pipeline service
-principal, not a personal user account.
+Pipeline and job ownership defaults to the identity that ran `databricks bundle deploy`.
+In CI this is `dataops-lab-sp`, the dedicated service principal. DAB supports an explicit
+`run_as` field on pipeline and job resources (available since CLI 0.241.0), which pins the
+run identity independently of who deployed. This repo does not set `run_as` because prod is
+always CI-deployed under `dataops-lab-sp` — the effective behavior is already correct. In a
+multi-team deployment where engineers can deploy to shared targets, `run_as` should be
+declared explicitly to prevent pipeline ownership drifting to individual user accounts:
+
+```yaml
+# databricks.yml — prod target pipeline/job resources
+run_as:
+  service_principal_name: dataops-lab-sp
+```
 
 ## Access model
 
