@@ -40,6 +40,16 @@ targets:
           configuration:
             pipelines.maxFlowRetryAttempts: "0"
             pipelines.numUpdateRetryAttempts: "0"
+          # run_as pins the pipeline run identity independently of who deployed.
+          # Not set here because prod is always CI-deployed under dataops-lab-sp,
+          # making it a no-op. Declare it in multi-team setups where engineers can
+          # deploy to shared targets:
+          # run_as:
+          #   service_principal_name: dataops-lab-sp
+      jobs:
+        medallion_operational_job:
+          # run_as:
+          #   service_principal_name: dataops-lab-sp
 
 
 resources:
