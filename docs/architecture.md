@@ -111,15 +111,17 @@ input data or output tables — verified by live concurrent execution (M22, M28)
 ## Deployment model
 
 Deployment is controlled through GitHub Actions and Declarative Automation Bundles.
-Bundle deployment runs first to create the schema, then the volume is provisioned, then
-source data is uploaded.
+The UC schema and managed volume are provisioned first via the Databricks CLI, source data
+is uploaded, then bundle deploy creates the pipeline and job resources.
 
 ```
 PR opened (code change)
-  → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n> --var=target_schema=sdp_pr_<n>
-  → creates pr_<n>_medallion_pipeline and schema dataops_lab.sdp_pr_<n>
+  → databricks schemas create sdp_pr_<n> dataops_lab
   → databricks volumes create dataops_lab sdp_pr_<n> raw MANAGED
   → upload_data.sh dev sdp_pr_<n>
+  → databricks bundle deploy -t dev --var=deployment_suffix=pr_<n> --var=target_schema=sdp_pr_<n>
+    → creates pr_<n>_medallion_pipeline and pr_<n>_medallion_operational_job
+  → stop_pipeline.py (waits for IDLE before triggering a run)
   → databricks bundle run medallion_pipeline --refresh-all
   → validate_counts.py asserts all 7 table row counts via SQL warehouse
 
