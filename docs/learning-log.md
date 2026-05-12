@@ -2388,17 +2388,39 @@ Both gaps fixed.
 ### 2026-05-12 — M33: CDC demo with apply_changes()
 
 **What I observed**
-`apply_changes()` requires a streaming source table. A plain
-`spark.readStream.csv(path)` read in a `@dlt.table` function satisfies this — DLT
-manages the streaming state (checkpointing). Auto Loader is not required.
+`apply_changes()` requires a streaming source table. `spark.readStream.csv(path)`
+in a `@dlt.table` function satisfies this — DLT manages the streaming state
+(checkpointing). Auto Loader is not required.
 
-After running: `customers_cdc_bronze` had 3 rows (the 3 raw events);
-`customers_current` had 2 rows — customer 1 with the updated name, customer 4 as
-a new insert, customer 2 absent (DELETE was applied). `customers_silver` was
-unaffected at 2 rows, confirming the CDC pipeline is fully additive.
+Three errors appeared during development before the pipeline ran cleanly:
 
-The pipeline graph distinguishes streaming tables (diamonds) from materialized
-views (rectangles) — `customers_current` appears as a streaming table node.
+1. `Option 'basePath' must be a directory` — `spark.readStream.csv()` requires a
+   directory path, not a file path. The CDC file was moved to a `cdc/` subdirectory
+   under the raw volume and the read path updated accordingly.
+
+2. `no such directory: /Volumes/.../raw/cdc` — `databricks fs cp` does not create
+   intermediate directories. A `databricks fs mkdirs "$VOLUME/cdc"` call was added
+   to `upload_data.sh` before the copy.
+
+3. `Wrong basePath .../raw/cdc for the root path: .../raw/customers_cdc.csv` — the
+   streaming checkpoint from the first (broken) run recorded the old flat path. After
+   moving the file to `cdc/`, the checkpoint conflicted with the new basePath. A full
+   pipeline refresh cleared the checkpoint. `databricks bundle run ... --full-refresh all`
+   fails in CLI v0.298.0 (`all` is not a valid dataset identifier) — use the UI
+   **Full refresh all** option instead.
+
+After the full refresh and clean run: `customers_cdc_bronze` had 3 rows (the 3 raw
+events); `customers_current` had 2 rows — customer 1 with the updated name, customer
+4 as a new insert, customer 2 absent (DELETE applied). `customers_silver` was unaffected
+at 2 rows. Both prod and dev ran successfully with `medallion_operational_job`.
+
+The pipeline graph distinguishes streaming tables from materialized views —
+`customers_current` appears as a distinct streaming table node.
+
+A separate issue surfaced: `bundle.git.branch: main` at the bundle level blocks
+`bundle deploy` from any non-main branch, making local feature branch testing
+impossible. Moved to the prod target only, where it belongs as a deployment guard.
+Dev is now unconstrained.
 
 **What I learned**
 Streaming tables and materialized views coexist in the same DLT pipeline. The
@@ -2411,17 +2433,29 @@ SCD1 silently hides history. That is the point — `customers_current` reflects
 only the latest known state. A history requirement needs `stored_as_scd_type=2`,
 which creates a separate `__apply_changes_storage_*` table managed by DLT.
 
+Streaming checkpoints are anchored to the exact path used at first run. Changing
+the source path after a run requires a full refresh to reset the checkpoint — an
+incremental run will reject the new path as conflicting with the recorded basePath.
+
+`git.branch` in `databricks.yml` has two distinct placements with different
+semantics: bundle-level blocks all deploys from non-matching branches; target-level
+blocks only that target. The guard belongs on prod only.
+
 **Practical conclusion**
-A static CDC fixture with explicit sequence numbers is sufficient to demonstrate
-the full INSERT/UPDATE/DELETE lifecycle in a credible way. The streaming semantics
-are what matter for the demo, not the feed mechanism. Use `spark.readStream.csv()`
-for CI-safe CDC fixtures; reserve Auto Loader for production ingestion patterns.
+`spark.readStream.csv()` requires a directory, not a file path. Use a dedicated
+subdirectory per CDC source to avoid the streaming reader picking up unrelated files.
+Always `mkdirs` before `fs cp` when the target path may not exist.
+
+A static CDC fixture with explicit sequence numbers demonstrates the full
+INSERT/UPDATE/DELETE lifecycle. The streaming semantics are what matter for the
+demo, not the feed mechanism.
 
 **Current position**
-- `customers_cdc_bronze`: streaming bronze of raw CDC events
+- `customers_cdc_bronze`: streaming bronze of raw CDC events, read from `{source_path}/cdc/`
 - `customers_current`: SCD1 table via `apply_changes()`, alongside `customers_silver`
 - Both new tables covered by `expected_counts.json` and `assert_job_output.py`
 - `customers_silver` and gold pipeline unchanged
+- `git.branch: main` guard moved to prod target only
 
 **Remaining gaps**
 `customers_current` is not wired into gold — a production setup would need to

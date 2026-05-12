@@ -23,9 +23,11 @@ in the same bundle pipeline so that `dlt.read()` can resolve cross-file dependen
 and Databricks builds one unified DAG.
 
 ```
-customers_bronze → customers_silver ↘
-                                      → customer_order_summary
-orders_bronze    → orders_silver    ↗
+customers_bronze     → customers_silver ↘
+                                          → customer_order_summary
+orders_bronze        → orders_silver    ↗
+
+customers_cdc_bronze → customers_current   (SCD1 via apply_changes())
 ```
 
 Rejected rows are captured as separate silver-layer tables:
@@ -336,6 +338,47 @@ or incorrect.
 - UC schemas and volumes are created by manual SQL during setup (see `docs/setup.md`). DAB supports declaring schemas and volumes as managed resources with inline grants, which would make the prod schema reproducible from `bundle deploy` without manual SQL. Not implemented here because `bundle destroy` removes all resources in a target — declaring `sdp_dev` in the dev target would cause `cleanup-pr.yml` to drop it on every PR close. Only fixed, long-lived schemas in targets that are never destroyed programmatically are safe to declare in DAB. In this repo that is the prod target only, which reduces the improvement to a single schema. Documented as a pattern; the constraint is real.
 - This reference workspace runs on AWS. All DLT/SDP pipeline code, DAB configuration structure, UC Volumes, and CI/CD workflows are cloud-agnostic. The `medallion_operational_job` currently has no cloud-specific config (see below).
 - `medallion_operational_job` has two tasks: `run_pipeline` (pipeline trigger) and `assert_output` (threshold-based validation via `scripts/assert_job_output.py`). The assertion task uses `spark_python_task` with `environment_key` (serverless compute — no cluster creation rights required). CI uses `scripts/validate_counts.py` with exact fixture counts on every PR; the job task uses threshold checks appropriate for production operations (bronze non-empty, gold non-empty when silver has rows, no critical rejections). The two scripts are intentionally separate: CI validates deterministic fixture data; the job validates operational health.
+
+## CDC pattern: customers_current
+
+`cdc_pipeline.py` demonstrates how to handle change data capture events using
+`apply_changes()` — the DLT-native SCD implementation.
+
+```
+customers_cdc_bronze (streaming) → customers_current (SCD1)
+```
+
+The CDC fixture (`data/customers_cdc.csv`) is uploaded to a dedicated `cdc/`
+subdirectory under the raw volume (`{source_path}/cdc/`). Separating it from
+the batch source files is required: `spark.readStream.csv()` reads all CSV files
+in the target directory, so mixing CDC events with batch customer/order files
+would apply the wrong schema to the wrong data.
+
+`customers_cdc_bronze` is a streaming table (defined with `spark.readStream`).
+`apply_changes()` requires a streaming source — this is the distinction from the
+batch bronze tables (`customers_bronze`, `orders_bronze`), which are materialized
+views defined with `spark.read`.
+
+`customers_current` is an SCD Type 1 table: it reflects only the latest known
+state of each customer. Deletes remove the row entirely. History is not retained.
+The key parameters:
+
+| Parameter | Value | Purpose |
+|---|---|---|
+| `keys` | `["customer_id"]` | Primary key for upsert/delete matching |
+| `sequence_by` | `sequence_num` | Ordering column — higher value wins on conflict |
+| `apply_as_deletes` | `change_type = 'DELETE'` | Identifies tombstone records |
+| `except_column_list` | `["change_type", "sequence_num"]` | CDC metadata stripped from target |
+| `stored_as_scd_type` | `1` | Current state only; no history table |
+
+`customers_current` is a standalone demo table — it is not wired into gold. In a
+production setup the decision of which customer truth (batch silver or CDC current)
+feeds downstream consumers is an architectural choice that depends on latency,
+consistency, and consumer requirements.
+
+**Not implemented:** SCD Type 2 (`stored_as_scd_type=2`) would retain full history
+in a DLT-managed `__apply_changes_storage_*` table. Real-world CDC feeds would come
+from Debezium, a Kafka topic, or a Databricks-native CDC source — not a fixture CSV.
 
 ## Schema evolution
 
