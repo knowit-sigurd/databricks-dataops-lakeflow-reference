@@ -1,9 +1,14 @@
-# Databricks DataOps Reference Architecture
+# Databricks DataOps Reference Implementation
 
-A reference implementation of Databricks-native DataOps using Lakeflow / Spark Declarative
-Pipelines (SDP) and Declarative Automation Bundles (DAB). Demonstrates a Git-driven pipeline
-promotion, schema-per-PR isolation, data quality enforcement, and a production approval gate
-— all using platform-native capabilities without a custom framework.
+An executable slice of a Databricks-native DataOps operating model — built to accelerate
+architectural decisions, not to serve as a complete production template.
+
+The repo demonstrates one vertical: Git-driven pipeline promotion, schema-per-PR isolation,
+declarative data quality, CDC with `apply_changes()`, and a production approval gate — all
+using platform-native Databricks capabilities without a custom framework. Every pattern has
+been live-verified in a real workspace. The gaps are documented deliberately: Auto Loader
+ingestion, multi-pipeline orchestration, and full governance are out of scope here, and that
+boundary is the starting point for a client conversation.
 
 For a deeper look at the design decisions, environment model, data quality strategy, and deployment approval policy, see [docs/architecture.md](docs/architecture.md).
 
@@ -46,6 +51,21 @@ Schemas are also environment-scoped:
 | prod       | sdp_prod   | /Volumes/dataops_lab/sdp_prod/raw  | Fail pipeline (no retries) |
 
 Each PR gets a fully isolated environment: pipeline name, UC schema, and source volume are all scoped to `sdp_pr_<n>`. Schema and volume are destroyed on PR close.
+
+## What this is (and isn't)
+
+This is a **decision accelerator**, not a production template. Use it to answer:
+
+- Do we agree on DAB for CI/CD and environment isolation?
+- Do we agree on SDP expectations as the quality contract?
+- Do we agree on PR-scoped schemas for developer isolation?
+- Do we agree on operator-approved production promotion?
+- Do we agree on service-principal run identity for automated pipelines?
+
+Each of those is a real architectural choice. This repo makes them executable and debatable.
+What it does not cover — Auto Loader for streaming ingestion, multi-pipeline orchestration,
+full UC governance, OIDC federation — is documented in `docs/architecture.md` under each
+relevant section.
 
 ## Dev container
 

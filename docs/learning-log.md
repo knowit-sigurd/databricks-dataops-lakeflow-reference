@@ -1,5 +1,39 @@
 # Learning Log
 
+### 2026-05-12 — M34: README and demo guide reframe
+
+**What I observed**
+A third ChatGPT review (post-M33, full repo) identified "reference architecture" as an
+overclaim. The repo proves a controlled vertical — PR isolation, quality enforcement,
+CDC, production approval — not a complete enterprise architecture across identity,
+governance, network, environments, cost, monitoring, and DR.
+
+**What I learned**
+"Decision accelerator" is a more defensible and more useful framing for a client
+conversation. It reframes documented gaps as conversation starters rather than
+weaknesses. A skeptical architect asking "what about Auto Loader?" gets a better
+response when the README already says: that boundary is documented and is the
+starting point for the conversation.
+
+The framing change belongs in the README opening paragraph, the demo guide section 1
+script, and the executive overview opening frame — the three places a reviewer's
+attention lands first. The repo name, catalog, and bundle config are infrastructure
+and carry no client-facing messaging weight.
+
+**Practical conclusion**
+Frame the repo as a decision accelerator from the first line. The correct client pitch
+is: "Here is something you can run and break. Do we agree on DAB? PR environments?
+quality severity? service-principal identity? That agreement is worth more than any
+slide deck." Gaps become conversation starters, not evidence the repo is unfinished.
+
+**Current position**
+README title updated to "Reference Implementation." Opening paragraph and "What this
+is (and isn't)" section reflect the decision-accelerator framing. Demo guide section 1
+and executive overview opening frame updated. No code or config changes.
+
+**Remaining gaps**
+None introduced by this milestone.
+
 ## 2026-04-15
 
 ### What I worked on
