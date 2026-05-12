@@ -77,6 +77,8 @@ resources:
             path: ./pipelines/gold.py
         - file:
             path: ./pipelines/common.py
+        - file:
+            path: ./pipelines/cdc_pipeline.py
 
   jobs:
     medallion_operational_job:

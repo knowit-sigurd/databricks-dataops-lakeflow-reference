@@ -12,6 +12,8 @@ TABLES = [
     "orders_silver",
     "orders_rejected",
     "customer_order_summary",
+    "customers_cdc_bronze",
+    "customers_current",
 ]
 
 
@@ -60,6 +62,9 @@ def main():
     silver_total = counts["customers_silver"] + counts["orders_silver"]
     if silver_total > 0 and counts["customer_order_summary"] == 0:
         failures.append("customer_order_summary: empty while silver has rows — gold join failed")
+
+    if counts["customers_current"] == 0:
+        failures.append("customers_current: empty — apply_changes() produced no rows")
 
     # Critical rejections indicate a data integrity violation, not just quality trimming
     for table in ("customers_rejected", "orders_rejected"):

@@ -2384,3 +2384,47 @@ with `cancel-in-progress: true` to discard stale runs when a new commit is pushe
 `cleanup-pr.yml` was also missing `--var=source_path` in its `bundle destroy` call and
 did not call `cleanup_orphaned_pipeline.py` — orphaned jobs therefore survived PR close.
 Both gaps fixed.
+
+### 2026-05-12 — M33: CDC demo with apply_changes()
+
+**What I observed**
+`apply_changes()` requires a streaming source table. A plain
+`spark.readStream.csv(path)` read in a `@dlt.table` function satisfies this — DLT
+manages the streaming state (checkpointing). Auto Loader is not required.
+
+After running: `customers_cdc_bronze` had 3 rows (the 3 raw events);
+`customers_current` had 2 rows — customer 1 with the updated name, customer 4 as
+a new insert, customer 2 absent (DELETE was applied). `customers_silver` was
+unaffected at 2 rows, confirming the CDC pipeline is fully additive.
+
+The pipeline graph distinguishes streaming tables (diamonds) from materialized
+views (rectangles) — `customers_current` appears as a streaming table node.
+
+**What I learned**
+Streaming tables and materialized views coexist in the same DLT pipeline. The
+`apply_changes()` pattern is the DLT-native way to handle SCD1/SCD2 — no manual
+merge logic, no explicit UPSERT, no tombstone column to filter. The sequence_by
+column is the ordering guarantee; DELETE is declared as an expression, not a
+magic column name.
+
+SCD1 silently hides history. That is the point — `customers_current` reflects
+only the latest known state. A history requirement needs `stored_as_scd_type=2`,
+which creates a separate `__apply_changes_storage_*` table managed by DLT.
+
+**Practical conclusion**
+A static CDC fixture with explicit sequence numbers is sufficient to demonstrate
+the full INSERT/UPDATE/DELETE lifecycle in a credible way. The streaming semantics
+are what matter for the demo, not the feed mechanism. Use `spark.readStream.csv()`
+for CI-safe CDC fixtures; reserve Auto Loader for production ingestion patterns.
+
+**Current position**
+- `customers_cdc_bronze`: streaming bronze of raw CDC events
+- `customers_current`: SCD1 table via `apply_changes()`, alongside `customers_silver`
+- Both new tables covered by `expected_counts.json` and `assert_job_output.py`
+- `customers_silver` and gold pipeline unchanged
+
+**Remaining gaps**
+`customers_current` is not wired into gold — a production setup would need to
+decide which version of truth feeds downstream consumers. SCD2 (full history)
+not implemented — `stored_as_scd_type=2` would add it. Real CDC would come from
+Debezium or a native Databricks CDC source, not a fixture CSV.
