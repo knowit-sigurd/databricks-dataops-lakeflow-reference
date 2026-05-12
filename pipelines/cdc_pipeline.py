@@ -20,7 +20,7 @@ def customers_cdc_bronze():
         spark.readStream
         .option("header", True)
         .schema(CDC_SCHEMA)
-        .csv(f"{source_path}/customers_cdc.csv")
+        .csv(f"{source_path}/cdc")
     )
 
 
