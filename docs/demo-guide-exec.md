@@ -10,7 +10,9 @@
 
 Most data teams build a custom DataOps framework alongside their pipelines. They write orchestration code, validation logic, promotion scripts, and monitoring tooling — and then maintain all of it indefinitely as the platform evolves beneath it.
 
-This reference demonstrates the alternative: using Databricks platform capabilities directly, so the team writes transformation logic and lets the platform handle the rest.
+This repo demonstrates the alternative: using Databricks platform capabilities directly, so the team writes transformation logic and lets the platform handle the rest.
+
+It is not a production template — it is a **decision accelerator**. The goal is to make the key operating-model choices concrete: PR-isolated environments, declarative quality enforcement, CDC patterns, operator-approved promotion. Those choices are debatable. Showing them running in a real workspace gives a client something specific to react to, rather than agreeing or disagreeing with a slide.
 
 ---
 

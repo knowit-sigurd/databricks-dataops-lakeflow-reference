@@ -23,7 +23,16 @@ Open these in advance so you are not searching during the session:
 
 **What to say:**
 
-The project uses platform-native capabilities rather than building a custom DataOps layer. The comparison table makes the point directly — orchestration, validation, observability, and execution are all handled by Databricks. The custom code in this repo is transformation logic only.
+Start with this framing before opening any code:
+
+> "This is not a production template — it's a decision accelerator. Everything here has been
+> live-deployed in a real Databricks workspace. The point is to make the operating-model
+> choices concrete so we can agree or disagree on them with code in front of us, not slides."
+
+Then open `architecture.md` and walk the comparison table. The project uses platform-native
+capabilities rather than building a custom DataOps layer. The comparison table makes the point
+directly — orchestration, validation, observability, and execution are all handled by
+Databricks. The custom code in this repo is transformation logic only.
 
 The pipeline model is a single `medallion_pipeline` resource. Bronze reads from CSV volumes, silver standardises and validates, gold joins and aggregates. The key thing is that `dlt.read()` defines dependencies — there is no explicit job sequencing to maintain.
 
