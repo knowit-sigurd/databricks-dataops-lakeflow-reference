@@ -5,5 +5,7 @@
   "orders_bronze": 4,
   "orders_silver": 3,
   "orders_rejected": 1,
-  "customer_order_summary": 2
+  "customer_order_summary": 2,
+  "customers_cdc_bronze": 3,
+  "customers_current": 2
 }

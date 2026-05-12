@@ -1,8 +1,6 @@
 bundle:
   name: dataops-lab-sdp
   databricks_cli_version: ">= 0.298.0, < 1.0.0"
-  git:
-    branch: main
 
 variables:
   deployment_suffix:
@@ -77,6 +75,8 @@ resources:
             path: ./pipelines/gold.py
         - file:
             path: ./pipelines/common.py
+        - file:
+            path: ./pipelines/cdc_pipeline.py
 
   jobs:
     medallion_operational_job:

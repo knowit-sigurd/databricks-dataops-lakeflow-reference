@@ -1,0 +1,4 @@
+customer_id,customer_name,city,customer_email,change_type,sequence_num
+4,Alice Andersen,Oslo,alice.a@example.com,INSERT,1
+1,Alice Olsen,Oslo,alice@example.com,UPDATE,2
+2,Bob,Bergen,bob@example.com,DELETE,3
