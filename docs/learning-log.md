@@ -1,5 +1,49 @@
 # Learning Log
 
+### 2026-05-13 — M35: Resource tags on pipeline and job
+
+**What I observed**
+DAB's `presets.tags` block applies tags to all resources automatically — no per-resource
+`tags:` blocks needed. `${bundle.target}` resolves correctly to `dev` or `prod` in tag
+values. `${bundle.git.commit}` resolves from local git state at deploy time in both CI
+and local deploys. `${bundle.git.branch}` resolved correctly on local deploys but was
+`Empty` in GitHub Actions — the PR checkout is a detached merge commit
+(`refs/pull/<n>/merge`) with no local branch attached. Fixed by adding
+`git checkout -B ${{ github.head_ref || github.ref_name }}` immediately after the
+`actions/checkout` step in both `deploy-pr` and `deploy-prod`. The `-B` flag creates the
+local branch pointing at the current detached commit, which makes `bundle.git.branch`
+resolve correctly.
+
+DAB's `mode: development` automatically adds a `dev: <deploying-identity>` tag to all
+resources — this is expected behaviour and not overridden by `presets.tags`.
+
+**What I learned**
+`presets.tags` is strictly better than per-resource `tags:` for a multi-resource bundle:
+define once, impossible to forget when a new pipeline or job is added. Git variables
+(`git_commit`, `git_branch`) provide deployment traceability without any CI
+instrumentation beyond the branch-attach step.
+
+`deployed_at` (deploy timestamp) was considered and deliberately excluded. DAB has no
+`now()` equivalent in YAML. Injecting it via a `--var` flag on every deploy command
+requires manual discipline and will be forgotten on local deploys. The correct
+implementation is a DAB mutator — deferred to M42.
+
+**Practical conclusion**
+Add `presets.tags` with git variables from the start of any new bundle. Always add
+`git checkout -B ${{ github.head_ref || github.ref_name }}` after `actions/checkout` in
+any workflow that calls `databricks bundle deploy` — without it, `bundle.git.branch` is
+silently empty in CI.
+
+**Current position**
+Both `medallion_pipeline` and `medallion_operational_job` carry `domain`, `data_product`,
+`environment`, `owner`, `git_commit`, and `git_branch` tags via `presets.tags`.
+`environment` and git variables resolve dynamically at deploy time.
+
+**Remaining gaps**
+`deployed_at` (deploy timestamp) not implemented — requires a DAB mutator, deferred to
+M42. No tag policy enforcement — nothing prevents a future resource from being added
+without `presets.tags` coverage.
+
 ### 2026-05-12 — M34: README and demo guide reframe
 
 **What I observed**
@@ -2526,3 +2570,33 @@ Both `medallion_pipeline` and `medallion_operational_job` carry `domain`, `data_
 **Remaining gaps**
 `deployed_at` (deploy timestamp) not implemented — requires a DAB mutator. No tag policy
 enforcement — nothing prevents a future resource from opting out.
+
+### 2026-05-13 — M36: Production failure demo
+
+**What I observed**
+`databricks bundle run` exits non-zero when a DLT pipeline update fails. Wrapping the
+call in an inverted exit-code check (`if run; then fail; else pass`) lets CI assert that
+a pipeline failure is the expected outcome. The failed update is visible in the Databricks
+UI with the violated expectation named in the event log.
+
+`quality_mode=fail` can be overridden at deploy time via `--var=quality_mode=fail` without
+changing the bundle defaults — the PR and prod CI paths are unaffected.
+
+**What I learned**
+Testing failure paths requires inverting the normal success assertion. A `workflow_dispatch`
+trigger is the right mechanism for a controlled failure demo: it runs on demand, is visible
+in GitHub Actions, and does not interfere with the normal PR CI path. The demo is a first-
+class CI artifact, not a manual notebook exercise.
+
+**Practical conclusion**
+Add a failure-path workflow for any quality gate that uses `expect_or_fail`. The cost is
+one fixture file and one workflow. The client-demo value is high: it proves the contract is
+enforced, not just declared.
+
+**Current position**
+`failure-demo.yml` triggers on `workflow_dispatch`. Uploads `data/bad/customers_bad.csv`,
+deploys with `quality_mode=fail`, runs the pipeline, and asserts it exits as FAILED.
+
+**Remaining gaps**
+Cleanup of the `demo` deployment suffix after the demo run is manual. The `orders` failure
+path is not demonstrated — only customers. Both are acceptable for a reference scope.

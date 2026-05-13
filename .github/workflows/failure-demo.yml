@@ -1,0 +1,62 @@
+name: Failure Demo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  demo-failure:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+
+      - name: Attach git branch for bundle metadata
+        run: git checkout -B ${{ github.ref_name }}
+
+      - name: Install Databricks CLI
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/v0.298.0/install.sh | sh
+
+      - name: Upload bad customers + normal orders and CDC
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks fs cp data/bad/customers.csv \
+            dbfs:/Volumes/dataops_lab/sdp_dev/raw/customers.csv --overwrite
+          databricks fs cp data/orders.csv \
+            dbfs:/Volumes/dataops_lab/sdp_dev/raw/orders.csv --overwrite
+          databricks fs mkdirs dbfs:/Volumes/dataops_lab/sdp_dev/raw/cdc
+          databricks fs cp data/customers_cdc.csv \
+            dbfs:/Volumes/dataops_lab/sdp_dev/raw/cdc/customers_cdc.csv --overwrite
+
+      - name: Deploy bundle with quality_mode=fail
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          databricks bundle deploy -t dev \
+            --var=deployment_suffix=demo \
+            --var=target_schema=sdp_dev \
+            --var=source_path=/Volumes/dataops_lab/sdp_dev/raw \
+            --var=quality_mode=fail \
+            --auto-approve
+
+      - name: Run pipeline — expect failure
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+          DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+        run: |
+          if databricks bundle run medallion_pipeline -t dev \
+            --var=deployment_suffix=demo \
+            --var=target_schema=sdp_dev \
+            --var=source_path=/Volumes/dataops_lab/sdp_dev/raw \
+            --var=quality_mode=fail; then
+            echo "ERROR: pipeline should have failed but succeeded"
+            exit 1
+          else
+            echo "Pipeline failed as expected — quality_mode=fail contract verified"
+          fi
