@@ -14,6 +14,15 @@ variables:
   warehouse_id:
     default: "0bd7cc78c0abd6d9"
 
+presets:
+  tags:
+    domain: retail
+    data_product: customer_orders
+    environment: "${bundle.target}"
+    owner: data-engineering
+    git_commit: "${bundle.git.commit}"
+    git_branch: "${bundle.git.branch}"
+
 targets:
   dev:
     mode: development

@@ -2496,3 +2496,33 @@ demo, not the feed mechanism.
 decide which version of truth feeds downstream consumers. SCD2 (full history)
 not implemented — `stored_as_scd_type=2` would add it. Real CDC would come from
 Debezium or a native Databricks CDC source, not a fixture CSV.
+
+### 2026-05-13 — M35: Resource tags on pipeline and job
+
+**What I observed**
+DAB's `presets.tags` block applies tags to all resources automatically — no per-resource
+`tags:` blocks needed. `${bundle.target}` resolves correctly to `dev` or `prod` in tag
+values. `${bundle.git.commit}` and `${bundle.git.branch}` resolve from local git state at
+deploy time — they work both in CI and on local feature branches.
+
+**What I learned**
+`presets.tags` is strictly better than per-resource tags: define once, impossible to forget
+when a new resource is added. Git variables (`git_commit`, `git_branch`) provide deployment
+traceability without any CI instrumentation — a platform architect can look at any pipeline
+in the workspace and immediately know what source state it was deployed from.
+
+`deployed_at` was considered and deliberately excluded. DAB has no dynamic `now()` equivalent
+in YAML. Injecting it via `--var` on every deploy is a manual step that will be forgotten on
+local deploys. The correct implementation is a DAB mutator — deferred to M42.
+
+**Practical conclusion**
+Add `presets.tags` with git variables from the start of any new bundle. The cost is six lines
+of YAML; the operational and governance signal is disproportionately high.
+
+**Current position**
+Both `medallion_pipeline` and `medallion_operational_job` carry `domain`, `data_product`,
+`environment`, `owner`, `git_commit`, and `git_branch` tags via `presets.tags`.
+
+**Remaining gaps**
+`deployed_at` (deploy timestamp) not implemented — requires a DAB mutator. No tag policy
+enforcement — nothing prevents a future resource from opting out.
