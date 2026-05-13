@@ -1,5 +1,49 @@
 # Learning Log
 
+### 2026-05-13 — M36: Production failure demo
+
+**What I observed**
+`databricks bundle run` exits non-zero when a DLT pipeline update fails. Wrapping the call
+in an inverted exit-code check (`if run; then fail; else pass`) lets CI assert that a
+pipeline failure is the expected outcome — the overall workflow run shows green while the
+Databricks pipeline shows FAILED. The violated expectation is named in the event log with
+the exact input record that triggered it: `valid_customer_id`, `customer_id: null`.
+
+Downstream flows are automatically SKIPPED when an upstream flow fails — `customer_order_summary`
+(gold) was skipped because `customers_silver` never completed. The failure cascades correctly
+through the pipeline topology without any additional configuration.
+
+Initial attempt used `target_schema=sdp_dev` for the demo pipeline. This caused a
+`PERMISSION_DENIED` on `customers_cdc_bronze` — the table was already owned by the regular
+dev pipeline (`sigurd_medallion_pipeline`). DLT enforces table ownership: a pipeline cannot
+read a streaming table it did not create. Fixed by giving the demo a dedicated `sdp_demo`
+schema and volume, mirroring the PR isolation pattern.
+
+**What I learned**
+Testing failure paths requires inverting the normal success assertion. A `workflow_dispatch`
+workflow is the right mechanism: it runs on demand, produces a CI artifact (green run with
+FAILED pipeline), and does not interfere with the normal PR path. The demo is first-class
+evidence, not a manual notebook exercise.
+
+DLT table ownership extends to streaming tables — any pipeline that shares a schema with
+an existing pipeline must own all the streaming tables it reads. The safest pattern is a
+dedicated schema per deployment suffix, which the PR isolation model already enforces.
+
+**Practical conclusion**
+Add a failure-demo workflow for any quality gate that uses `expect_or_fail`. Always give
+the demo pipeline its own schema to avoid ownership conflicts with active dev pipelines.
+
+**Current position**
+`failure-demo.yml` triggers on `workflow_dispatch`. Creates `sdp_demo` schema and volume,
+uploads `data/bad/customers.csv` (null `customer_id` row), deploys with `quality_mode=fail`,
+runs the pipeline, and asserts it exits as FAILED. Verified: workflow green, pipeline FAILED,
+`valid_customer_id` violation named in event log with exact input record.
+
+**Remaining gaps**
+The `sdp_demo` schema and `demo_medallion_pipeline` are not cleaned up after the workflow
+run — left persistent for UI inspection during a demo. Manual cleanup required before
+re-running if the streaming checkpoint anchors to stale state.
+
 ### 2026-05-13 — M35: Resource tags on pipeline and job
 
 **What I observed**
