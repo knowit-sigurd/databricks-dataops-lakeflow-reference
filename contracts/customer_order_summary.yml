@@ -1,0 +1,38 @@
+table: customer_order_summary
+version: "1.0"
+owner: data-engineering
+consumer: analytics
+
+columns:
+  - name: customer_id
+    type: integer
+    nullable: false
+  - name: customer_name
+    type: string
+    nullable: true
+  - name: city
+    type: string
+    nullable: true
+  - name: region
+    type: string
+    nullable: true
+  - name: order_count
+    type: long
+    nullable: false
+  - name: total_amount
+    type: decimal
+    nullable: false
+
+rules:
+  - description: "Table must contain at least one row"
+    sql: "SELECT COUNT(*) FROM {table}"
+    expect: "> 0"
+  - description: "No null customer_id"
+    sql: "SELECT COUNT(*) FROM {table} WHERE customer_id IS NULL"
+    expect: "= 0"
+  - description: "No negative order_count"
+    sql: "SELECT COUNT(*) FROM {table} WHERE order_count < 0"
+    expect: "= 0"
+  - description: "No negative total_amount"
+    sql: "SELECT COUNT(*) FROM {table} WHERE total_amount < 0"
+    expect: "= 0"

@@ -1,5 +1,51 @@
 # Learning Log
 
+### 2026-05-13 — M37: Data contracts mini-example
+
+**What I observed**
+A YAML contract file + a short verification script wired as the third task in
+`medallion_operational_job` is sufficient to demonstrate the producer/consumer contract
+pattern. The job topology is visible in the Databricks UI:
+`run_pipeline` → `assert_output` → `verify_contract`.
+
+Two path resolution issues surfaced during implementation:
+(1) `open("contracts/...")` with a relative path fails — the serverless runtime working
+directory is not the repo root. (2) `Path(__file__)` also fails — the runtime executes
+scripts via `exec(compile(...))` which does not set `__file__`. Fixed with
+`Path(sys.argv[0]).resolve()` — `sys.argv[0]` is the full script path in the Databricks
+`spark_python_task` execution model, making it the reliable anchor for resolving sibling
+paths.
+
+`pyyaml` is not available in the serverless environment by default — must be declared in
+the job environment `dependencies` block in `databricks.yml` alongside `databricks-sdk`.
+
+**What I learned**
+In a Databricks `spark_python_task`, `__file__` is not defined and relative paths are
+unreliable. `Path(sys.argv[0]).resolve()` is the correct way to resolve paths relative
+to the script's location. This applies to any script that needs to read a sibling file
+(config, contract, fixture) at runtime.
+
+The contract YAML is more important than the verification mechanism. It is the artifact
+both teams version-control and sign off on. A 60-line script with no external framework
+is sufficient to enforce it and keep the focus on the contract itself.
+
+**Practical conclusion**
+Use `Path(sys.argv[0]).resolve()` for all file path resolution in `spark_python_task`
+scripts. Declare all non-standard dependencies in the job environment block — do not
+assume they are pre-installed in the serverless runtime.
+
+**Current position**
+`contracts/customer_order_summary.yml` defines 6 columns and 4 rules.
+`scripts/verify_contract.py` verifies the contract against the live table via the SDK.
+`medallion_operational_job` has three tasks: `run_pipeline` → `assert_output` →
+`verify_contract`. Verified: `Contract verified: dataops_lab.sdp_dev.customer_order_summary
+(6 columns, 4 rules)`.
+
+**Remaining gaps**
+Contract covers the gold layer only — bronze and silver are internal tables, not
+consumer-facing. No auto-enforcement on schema drift from the producer side (a column
+rename requires a manual contract update). Both are acceptable for a reference scope.
+
 ### 2026-05-13 — M36: Production failure demo
 
 **What I observed**
@@ -2644,3 +2690,37 @@ deploys with `quality_mode=fail`, runs the pipeline, and asserts it exits as FAI
 **Remaining gaps**
 Cleanup of the `demo` deployment suffix after the demo run is manual. The `orders` failure
 path is not demonstrated — only customers. Both are acceptable for a reference scope.
+
+### 2026-05-13 — M37: Data contracts mini-example
+
+**What I observed**
+A YAML contract file + a short verification script added to the Lakeflow Job as a third
+task (`verify_contract`) is sufficient to demonstrate the producer/consumer contract pattern.
+The contract defines column presence and three business rules; the script queries the actual
+table and fails with named violations. The job topology makes the contract check visible in
+the Databricks UI: run_pipeline → assert_output → verify_contract.
+
+**What I learned**
+The contract artifact (the YAML file) is more important than the verification mechanism.
+It is the thing both teams version-control and sign off on — the script just enforces it.
+Keeping the script simple (50 lines, no framework) keeps the focus on the contract itself
+rather than the tooling.
+
+M36 and M37 tell a connected story: M36 proves the input quality gate fails fast on bad
+data; M37 proves the output shape is guaranteed to the consumer. Together they answer both
+sides of the data quality question a skeptical architect will ask.
+
+**Practical conclusion**
+Add a contract file for every gold-layer table that has a downstream consumer. Wire
+verification as the last task in the operational job — it runs after the pipeline and
+assertions, and fails the job if the output shape drifts from the contract.
+
+**Current position**
+`contracts/customer_order_summary.yml` defines N columns and 3 rules.
+`scripts/verify_contract.py` verifies the contract against the live table.
+`medallion_operational_job` has three tasks: run_pipeline → assert_output → verify_contract.
+
+**Remaining gaps**
+Contract covers gold layer only. Bronze and silver have no contracts — deliberate, as those
+are internal pipeline tables, not consumer-facing. No auto-enforcement on schema drift
+(e.g. a column rename would require a contract update) — acceptable for a reference scope.
