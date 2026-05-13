@@ -63,7 +63,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Attach git branch for bundle metadata
-        run: git checkout ${{ github.head_ref || github.ref_name }} 2>/dev/null || true
+        run: git checkout -B ${{ github.head_ref || github.ref_name }}
 
       - name: Install Databricks CLI
         run: |
@@ -254,7 +254,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Attach git branch for bundle metadata
-        run: git checkout ${{ github.head_ref || github.ref_name }} 2>/dev/null || true
+        run: git checkout -B ${{ github.head_ref || github.ref_name }}
 
       - name: Install Databricks CLI
         run: |
