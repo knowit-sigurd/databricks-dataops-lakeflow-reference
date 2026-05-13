@@ -24,12 +24,12 @@ jobs:
           DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
         run: |
           databricks fs cp data/bad/customers.csv \
-            dbfs:/Volumes/dataops_lab/sdp_dev/raw/customers.csv --overwrite
+            dbfs:/Volumes/dataops_lab/sdp_dev/raw/customers.csv --overwrite -t dev
           databricks fs cp data/orders.csv \
-            dbfs:/Volumes/dataops_lab/sdp_dev/raw/orders.csv --overwrite
-          databricks fs mkdirs dbfs:/Volumes/dataops_lab/sdp_dev/raw/cdc
+            dbfs:/Volumes/dataops_lab/sdp_dev/raw/orders.csv --overwrite -t dev
+          databricks fs mkdirs dbfs:/Volumes/dataops_lab/sdp_dev/raw/cdc -t dev
           databricks fs cp data/customers_cdc.csv \
-            dbfs:/Volumes/dataops_lab/sdp_dev/raw/cdc/customers_cdc.csv --overwrite
+            dbfs:/Volumes/dataops_lab/sdp_dev/raw/cdc/customers_cdc.csv --overwrite -t dev
 
       - name: Deploy bundle with quality_mode=fail
         env:
