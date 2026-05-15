@@ -16,5 +16,8 @@ venv/
 # Databricks
 .databricks/
 
+# Claude Code local settings (personal, not a repo artifact)
+.claude/settings.local.json
+
 # Nested devcontainer repo (separate git repo, not part of this project)
 databricks-dev-container/
