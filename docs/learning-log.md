@@ -2788,3 +2788,34 @@ No notification when stale resources are found and deleted — a Slack or Teams 
 on the workflow would make the cleanup visible to the team on a shared platform. Not
 needed in a single-operator lab. Age threshold (7 days) is hardcoded in the workflow
 default — appropriate for this scope.
+
+### 2026-05-15 — M40: Platform prerequisites doc
+
+**What I observed**
+`docs/setup.md` mixed two audiences with different permissions and different timelines.
+Steps 1–2 (SP creation, UC catalog/schemas/volumes/grants) require workspace admin rights
+and are done once per workspace. Steps 3–7 (GitHub config, devcontainer, first deploy)
+require only GitHub repo admin access and are done once per repo. A data engineer
+following the original doc hits a UC admin SQL block immediately.
+
+**What I learned**
+Onboarding docs fail when the assumed reader changes mid-document. Separating by audience
+clarifies the dependency: the platform team's work is a prerequisite, not an appendix.
+It also makes each doc shorter and more actionable — the platform admin can complete their
+page independently, before the data engineering team starts.
+
+**Practical conclusion**
+Split setup docs by team boundary from the start of any new project. The split is not a
+refactor — it is the correct initial structure. A single "setup.md" only makes sense when
+one person owns every step, which is rare on a real client engagement.
+
+**Current position**
+`docs/platform-prerequisites.md`: SP, UC, warehouse grants, OIDC recommendation.
+`docs/setup.md`: GitHub secrets, environments, branch protection, local dev, first deploy.
+`README.md` references both with audience labels.
+
+**Remaining gaps**
+No automation for platform-prerequisites steps — they remain manual SQL and UI clicks.
+DAB could manage the prod schema as a bundle resource (documented in architecture.md Known
+Limitations), which would reduce the platform-prerequisites SQL to catalog + dev schema only.
+Not in scope here.
