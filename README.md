@@ -30,6 +30,7 @@ docs/               # Architecture, learning log, demo guides
 .github/workflows/  # CI and deploy workflows (ci.yml, deploy.yml, cleanup-pr.yml)
 .github/            # Dependabot config (weekly pip + actions updates) + PR template
 databricks.yml      # Bundle config (targets: dev, prod)
+Makefile            # Dev lifecycle commands (lint, test, deploy, run, assert, clean)
 ```
 
 ## How it works
@@ -76,17 +77,18 @@ The development environment is based on the [databricks-dev-container](https://g
 Recommended local checks before creating a PR:
 
 ```bash
-uv run ruff check .
-uv run pytest
-databricks bundle validate -t dev
-databricks bundle plan -t dev
+make ci        # lint + test (mirrors CI)
+make validate  # validate bundle config
 ```
 
-To upload source data to the dev volume:
+To upload source data to the dev volume and deploy:
 
 ```bash
-scripts/upload_data.sh dev
+make upload
+make deploy
 ```
+
+Run `make help` to see all available targets.
 
 ## CI/CD
 
@@ -98,7 +100,7 @@ scripts/upload_data.sh dev
 | Push to main     | Deploy         | Approval gate → deploy `prod` target to `sdp_prod` (skipped for docs-only merges)                |
 | Manual dispatch  | Deploy         | Deploy dev bundle only — pipeline not run, row counts not asserted                                |
 
-Docs-only is defined as changes exclusively in `docs/`, `README.md`, or `.github/PULL_REQUEST_TEMPLATE.md`. For code PRs the deploy order is: create schema (CLI) → create managed volume (CLI) → upload source data → bundle deploy (creates pipeline + job) → run pipeline → assert counts.
+Docs-only is defined as changes exclusively in `docs/`, `README.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `Makefile`, `uv.lock`, or `.devcontainer/`. For code PRs the deploy order is: create schema (CLI) → create managed volume (CLI) → upload source data → bundle deploy (creates pipeline + job) → run pipeline → assert counts.
 
 Databricks credentials are stored as GitHub secrets:
 `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET`, `DATABRICKS_WAREHOUSE_ID`.

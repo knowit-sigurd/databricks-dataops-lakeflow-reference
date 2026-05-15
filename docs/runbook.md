@@ -98,11 +98,19 @@ Verify in the Databricks UI:
 
 ## Re-deploy dev bundle manually
 
-Use `workflow_dispatch` in GitHub Actions: `Actions → Deploy SDP Pipelines → Run workflow → target: dev`.
+**Local (inside the devcontainer):**
 
-This deploys the dev bundle only. The pipeline is not triggered and row counts are not
-asserted — those steps are gated on PR events. Use this to push a config change to the
-dev pipeline without opening a PR.
+```bash
+make deploy   # cleans orphans + state, then bundle deploy to dev
+```
+
+**Via GitHub Actions (workflow_dispatch):**
+
+`Actions → Deploy SDP Pipelines → Run workflow → target: dev`
+
+The workflow_dispatch path deploys only — pipeline is not triggered and row counts are not
+asserted. Use `make deploy` for local iteration; use workflow_dispatch to verify the CI
+deploy path without opening a PR.
 
 ## Query the event log for a pipeline run
 
