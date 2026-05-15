@@ -2753,3 +2753,38 @@ stop, run, job, assert, clean. `gh` and `yq` installed in devcontainer.
 Makefile targets are not tested in CI — they are wrappers around commands that are. A
 future step could add a `make validate` call to CI as a smoke test, but current CI coverage
 is sufficient.
+
+### 2026-05-15 — M39: Weekly cleanup of stale dev resources
+
+**What I observed**
+`cleanup-pr.yml` fires on `pull_request: [closed]` — it misses PRs closed while CI
+was broken, manually created resources, and DAB state-file orphans that `bundle destroy`
+never reached. After several milestones of active development the workspace accumulates
+stale `sdp_pr_*` schemas and `pr_<n>_*` pipelines/jobs that no workflow ever removes.
+
+**What I learned**
+A scheduled cleanup and a PR-close cleanup serve different failure modes. The PR-close
+workflow is the fast path — runs immediately when a PR closes under normal conditions.
+The weekly job is the safety net — catches everything that fell through. Both are needed;
+neither replaces the other.
+
+The `--dry-run` flag is not optional for deletion scripts. Verifying what the script
+would delete before the first live run is standard practice, and the cost (one bool check)
+is negligible.
+
+**Practical conclusion**
+Add a scheduled cleanup workflow on day one of any shared dev platform. Wire it to the
+same auth secrets as CI. The pattern `pr_\d+_` / `sdp_pr_\d+` is sufficient to target
+PR resources without touching permanent dev/prod assets — but validate with `--dry-run`
+before the first live run.
+
+**Current position**
+`scripts/cleanup_stale_dev_resources.py` deletes PR-scoped pipelines, jobs, and
+UC schemas older than N days (default 7). `cleanup-stale.yml` runs on Monday
+06:00 UTC cron and accepts `workflow_dispatch` with configurable `age_days`.
+
+**Remaining gaps**
+No notification when stale resources are found and deleted — a Slack or Teams webhook
+on the workflow would make the cleanup visible to the team on a shared platform. Not
+needed in a single-operator lab. Age threshold (7 days) is hardcoded in the workflow
+default — appropriate for this scope.
