@@ -127,7 +127,7 @@ PR opened (code change)
   → databricks bundle run medallion_pipeline --refresh-all
   → validate_counts.py asserts all 7 table row counts via SQL warehouse
 
-PR opened (docs-only: changes only in docs/, README.md, .github/PULL_REQUEST_TEMPLATE.md)
+PR opened (docs-only: changes only in docs/, README.md, .github/PULL_REQUEST_TEMPLATE.md, Makefile, uv.lock, .devcontainer/)
   → deploy-pr skipped — reported as "skipped" by GitHub, satisfies required status check
   → completes in ~7s
 
@@ -136,7 +136,7 @@ PR closed (merged or abandoned, code change)
   → databricks schemas delete --force dataops_lab.sdp_pr_<n>
   → removes pipeline resource, UC schema, tables, and managed raw volume
 
-PR closed (docs-only)
+PR closed (docs-only: docs/, README.md, .github/PULL_REQUEST_TEMPLATE.md, Makefile, uv.lock, .devcontainer/)
   → cleanup skipped — nothing was deployed, nothing to destroy
 
 Merged to main (code change)
@@ -157,8 +157,8 @@ The `deploy-pr` job is skipped in two cases. First, for Dependabot PRs
 (`if: github.actor != 'dependabot[bot]'`): Dependabot updates dependency manifests only,
 GitHub restricts secrets for external actors, and any deploy would fail silently without
 this guard. Second, for docs-only PRs: a `changes` job runs first and queries the GitHub
-API for the PR's changed files; if all files are under `docs/`, `README.md`, or
-`.github/PULL_REQUEST_TEMPLATE.md`, `deploy-pr` is skipped. GitHub reports a skipped job
+API for the PR's changed files; if all files are under `docs/`, `README.md`, `.github/PULL_REQUEST_TEMPLATE.md`,
+`Makefile`, `uv.lock`, or `.devcontainer/`, `deploy-pr` is skipped. GitHub reports a skipped job
 as "skipped", which satisfies the required status check. The `ci` job (lint + tests) runs
 in both cases.
 
@@ -227,7 +227,7 @@ diff is visible in CI logs before any changes are applied.
 
 ```
 Local dev (VS Code + devcontainer)
-  ↓  uv run ruff check / pytest
+  ↓  make ci (lint + test) / make validate / make deploy / make run / make assert
 Feature branch → PR to main
   ↓  CI / ci must pass (lint + tests) — required gate
   ↓  Deploy SDP Pipelines / deploy-pr — required gate

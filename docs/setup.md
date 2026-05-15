@@ -138,22 +138,24 @@ the container without any further steps.
 
 ```bash
 databricks auth status
-databricks bundle validate -t dev
+make validate
 ```
 
 **Run local tests:**
 
 ```bash
-uv run pytest
+make ci
 ```
 
 ## 7. Upload fixture data and run a first deploy
 
 ```bash
 # Inside the devcontainer
-scripts/upload_data.sh dev
-databricks bundle deploy -t dev
+make upload
+make deploy
 ```
+
+Run `make help` to see all available targets.
 
 Then open a PR to trigger the full CI + deploy-pr pipeline. Both the `CI / ci` and
 `Deploy SDP Pipelines / deploy-pr` checks must pass before you can add them as required
