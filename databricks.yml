@@ -87,6 +87,18 @@ resources:
         - file:
             path: ./pipelines/cdc_pipeline.py
 
+    autoloader_pipeline:
+      name: "${var.deployment_suffix}_autoloader_pipeline"
+      catalog: dataops_lab
+      target: "${var.target_schema}"
+      serverless: true
+      libraries:
+        - file:
+            path: ./pipelines/orders_autoloader_pipeline.py
+      configuration:
+        autoloader_source_path: "/Volumes/dataops_lab/${var.target_schema}/raw/autoloader"
+        autoloader_schema_location: "/Volumes/dataops_lab/${var.target_schema}/raw/autoloader_schema"
+
   jobs:
     medallion_operational_job:
       name: ${var.deployment_suffix}_medallion_operational_job

@@ -429,28 +429,65 @@ mode, and schema registry integration are production patterns not implemented in
 reference. They are appropriate when source schemas are truly unknown or when multiple
 upstream teams write to the same volumes.
 
-## Future enrichment: Auto Loader bronze
+## Auto Loader demo: orders_autoloader_pipeline
 
-This repo ingests source data from static CSV files uploaded by `upload_data.sh` before
-each pipeline run. In a production deployment the correct pattern is Auto Loader
-(`cloudFiles` source format), which monitors a cloud storage location for new files
-and processes them incrementally as they arrive — no upload script, no manual trigger.
+`orders_autoloader_pipeline` demonstrates production-grade file ingestion using Auto Loader
+(`cloudFiles` format). It is a standalone pipeline — separate from `medallion_pipeline`,
+not part of the CI gate, and run manually to show three patterns.
 
-**What would change:**
+### Tables
 
-- Bronze tables switch from `dlt.read_files()` or manual CSV reads to `dlt.read_stream()`
-  with `format="cloudFiles"` and a schema hint or schema location
-- `upload_data.sh` and the "Upload source data" CI step are removed
-- The pipeline becomes event-driven: new files landing in the volume trigger processing
-  automatically on the next scheduled or continuous run
-- CI would need a different validation strategy — row count assertions against static
-  fixture counts would no longer apply to a streaming bronze source
+```
+orders_autoloader_bronze  (streaming, cloudFiles)
+  → orders_autoloader_silver   (clean rows, valid_order_id enforced)
+  → orders_autoloader_rescued  (malformed rows captured by _rescued_data)
+```
 
-**Why not implemented here:**
+### Pattern 1: Streaming bronze ingest
 
-This reference repo uses static fixture data to demonstrate data quality enforcement
-predictably. Auto Loader adds operational realism but removes the ability to assert
-exact row counts in CI, which is a core demonstration in the current design. The two
-patterns serve different purposes: static fixtures for controlled quality demos, Auto
-Loader for production ingestion pipelines. A production implementation would use Auto
-Loader from the start and validate with deviation thresholds rather than hard-coded counts.
+Auto Loader monitors `/Volumes/dataops_lab/{schema}/raw/autoloader/` for new CSV files and
+processes them incrementally. This is a subdirectory of the existing `raw` volume — Auto
+Loader requires a directory path within an existing UC Volume, not a separate volume.
+`cloudFiles.schemaHints` pins the known column types (`amount DECIMAL(10,2)`, etc.).
+`cloudFiles.schemaLocation` persists the inferred schema between runs so Auto Loader does
+not re-scan all files on restart.
+
+### Pattern 2: Schema evolution
+
+`cloudFiles.schemaEvolutionMode=addNewColumns` means that when `orders_evolved.csv`
+(which adds a `region` column) is uploaded and the pipeline re-runs, Auto Loader detects
+the new column, adds it to the bronze schema, and continues — no pipeline change required.
+
+To demonstrate:
+```bash
+make upload-autoloader           # uploads orders_v1.csv (4 columns)
+make run-autoloader              # run 1 — bronze has 4 columns
+databricks fs cp data/autoloader/orders_evolved.csv \
+  dbfs:/Volumes/dataops_lab/sdp_dev/raw/autoloader/ --overwrite -t dev
+make run-autoloader              # run 2 — bronze schema evolves to 5 columns
+```
+
+### Pattern 3: Rescued data
+
+`rescuedDataColumn=_rescued_data` means that a row whose `amount` value cannot be cast
+to `DECIMAL(10,2)` is not dropped and does not fail the pipeline. The raw row is written
+to bronze with `_rescued_data` populated as JSON. `orders_autoloader_rescued` surfaces
+these rows for inspection.
+
+To demonstrate:
+```bash
+databricks fs cp data/autoloader/orders_malformed.csv \
+  dbfs:/Volumes/dataops_lab/sdp_dev/raw/autoloader/ --overwrite -t dev
+make run-autoloader
+-- Query: SELECT order_id, _rescued_data FROM sdp_dev.orders_autoloader_bronze
+--        WHERE _rescued_data IS NOT NULL
+```
+
+### Why the fixture pipeline is unchanged
+
+`medallion_pipeline` uses static CSV fixtures for predictable CI row count assertions.
+Replacing it with Auto Loader would require abandoning exact-count CI validation —
+Auto Loader is event-driven and the row count depends on what files have been uploaded.
+The two pipelines serve different purposes: `medallion_pipeline` demonstrates quality
+enforcement with deterministic CI; `orders_autoloader_pipeline` demonstrates production
+ingestion patterns. Both are necessary parts of the reference.
