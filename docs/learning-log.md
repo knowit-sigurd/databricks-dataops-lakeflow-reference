@@ -2724,3 +2724,32 @@ assertions, and fails the job if the output shape drifts from the contract.
 Contract covers gold layer only. Bronze and silver have no contracts — deliberate, as those
 are internal pipeline tables, not consumer-facing. No auto-enforcement on schema drift
 (e.g. a column rename would require a contract update) — acceptable for a reference scope.
+
+## 2026-05-15 M38: Dev ergonomics — Makefile + gh + yq
+
+**What I observed**
+The repo had no local entry point for the dev lifecycle. Every workflow step (lint,
+test, upload, deploy, run, assert, clean) was documented only in CI YAML. A visiting
+engineer had to read three workflow files to reconstruct the sequence. The devcontainer
+was also missing `gh`, which CI workflows use for path filtering and PR inspection.
+
+**What I learned**
+A Makefile at repo root is the lowest-friction self-documentation artifact: `make help`
+explains the full lifecycle without opening any files. It also ensures local and CI
+commands are identical — `make ci` runs the same ruff + pytest invocation the CI job does.
+`yq` is the standard tool for inspecting and asserting on YAML files (contracts, bundle
+config) without writing Python; `gh` belongs in the container because it is already in CI.
+
+**Practical conclusion**
+Add a Makefile on day one of any new DataOps repo. One target per lifecycle step, defaults
+matching the dev target. Overridable vars (TARGET, SUFFIX, SCHEMA) handle non-default
+scenarios without adding complexity.
+
+**Current position**
+`Makefile` at repo root with 11 targets: help, lint, test, ci, upload, validate, deploy,
+stop, run, job, assert, clean. `gh` and `yq` installed in devcontainer.
+
+**Remaining gaps**
+Makefile targets are not tested in CI — they are wrappers around commands that are. A
+future step could add a `make validate` call to CI as a smoke test, but current CI coverage
+is sufficient.

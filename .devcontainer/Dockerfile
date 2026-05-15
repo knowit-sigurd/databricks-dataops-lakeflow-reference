@@ -31,6 +31,8 @@ RUN apt-get update \
         liblzma-dev \
         libsasl2-dev \
         sudo \
+        ripgrep \
+        jq \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -45,6 +47,20 @@ ENV UV_INSTALL_DIR=/usr/local/bin
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 RUN curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+RUN mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+       | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+    && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+       | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y gh \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64 \
+    -o /usr/local/bin/yq \
+    && chmod +x /usr/local/bin/yq
 
 ARG SPARK_VERSION=4.1.1
 ARG HADOOP_FLAVOR=hadoop3

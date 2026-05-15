@@ -21,7 +21,7 @@ jobs:
             --json files --jq '.files[].path')
           echo "Changed files:"
           echo "$CHANGED"
-          if [ -z "$CHANGED" ] || echo "$CHANGED" | grep -qvE '^(docs/.*|README\.md|\.github/PULL_REQUEST_TEMPLATE\.md)$'; then
+          if [ -z "$CHANGED" ] || echo "$CHANGED" | grep -qvE '^(docs/.*|README\.md|\.github/PULL_REQUEST_TEMPLATE\.md|Makefile|uv\.lock|\.devcontainer/.*)$'; then
             echo "code=true" >> $GITHUB_OUTPUT
             echo "Code changes detected — cleanup will run"
           else
