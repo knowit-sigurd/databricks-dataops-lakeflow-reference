@@ -2819,3 +2819,42 @@ No automation for platform-prerequisites steps — they remain manual SQL and UI
 DAB could manage the prod schema as a bundle resource (documented in architecture.md Known
 Limitations), which would reduce the platform-prerequisites SQL to catalog + dev schema only.
 Not in scope here.
+
+### 2026-05-15 — M41: Auto Loader mini-pipeline
+
+**What I observed**
+`cloudFiles.schemaEvolutionMode=addNewColumns` handled a new `region` column without
+any code change — the column appeared in bronze on the next run after uploading the
+evolved file. `rescuedDataColumn=_rescued_data` captured the malformed `amount` row
+as JSON rather than failing or silently dropping it. Both patterns worked on first
+attempt in the dev workspace.
+
+**What I learned**
+Auto Loader's value is not just streaming — it is that schema drift and bad rows are
+handled at the platform level, not in pipeline code. The pipeline author does not write
+schema migration logic or try/except blocks. The rescue column makes bad data visible
+without breaking the pipeline; `schemaEvolutionMode` makes additive schema changes
+invisible to the pipeline author.
+
+The separation of `medallion_pipeline` (batch, CI-deterministic) and
+`orders_autoloader_pipeline` (streaming, demo) is the right architectural split.
+Replacing the batch pipeline with Auto Loader would eliminate the ability to assert
+exact row counts in CI. Both pipelines together answer the full ingestion question.
+
+**Practical conclusion**
+Start every production ingest pipeline with `cloudFiles`, `rescuedDataColumn`, and
+`schemaEvolutionMode=addNewColumns`. These three options together handle the three
+most common ingestion failure modes: new files arriving, new columns appearing, and
+malformed values — without any custom error handling code.
+
+**Current position**
+`orders_autoloader_pipeline` deploys alongside `medallion_pipeline` in all targets.
+Three tables: `orders_autoloader_bronze` (streaming), `orders_autoloader_silver`
+(clean rows), `orders_autoloader_rescued` (malformed rows). Schema evolution and
+rescue demonstrated with fixture files in `data/autoloader/`.
+
+**Remaining gaps**
+Auto Loader checkpoint state is stored in `autoloader_schema_location`. A full pipeline
+refresh resets it — documented but not automated. No CI assertions on autoloader tables
+by design. CDC source (Debezium, Kafka) not demonstrated — fixture CSV is the stand-in
+for a real streaming source.
