@@ -2,6 +2,12 @@ bundle:
   name: dataops-lab-sdp
   databricks_cli_version: ">= 0.298.0, < 1.0.0"
 
+python:
+  mutators:
+    - mutators.set_run_context:set_pipeline_context
+    - mutators.set_run_context:set_job_context
+  venv_path: .venv
+
 variables:
   deployment_suffix:
     default: dev
