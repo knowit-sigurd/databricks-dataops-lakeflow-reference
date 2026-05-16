@@ -153,6 +153,14 @@ Merged to main (docs-only)
 Dynamic naming logic (suffix, schema) is resolved in GitHub Actions and passed into DAB.
 `databricks.yml` stays static — no string manipulation inside bundle configuration.
 
+A Python DAB mutator (`mutators/set_run_context.py`) runs at deploy time for all targets.
+It adds a `deployed_at` UTC timestamp tag to every pipeline and job — a value YAML cannot
+compute because it has no `now()`. Resource naming stays in YAML variable substitution;
+the mutator is scoped to properties that are only knowable at deploy time. Requires the
+`databricks-bundles` Python package, declared in `pyproject.toml` dev dependencies and
+installed in `.venv`. Configured via the top-level `python:` block in `databricks.yml`
+using fully-qualified function paths (`mutators.set_run_context:set_pipeline_context`).
+
 The `deploy-pr` job is skipped in two cases. First, for Dependabot PRs
 (`if: github.actor != 'dependabot[bot]'`): Dependabot updates dependency manifests only,
 GitHub restricts secrets for external actors, and any deploy would fail silently without

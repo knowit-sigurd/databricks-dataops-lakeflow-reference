@@ -2924,3 +2924,66 @@ UC volumes (`sdp_dev/raw`, `sdp_prod/raw`) remain manually provisioned — the s
 `deployment bind` pattern applies if they are added to the platform target later.
 In a production multi-team setup, platform resources belong in a separate bundle with
 independent CI permissions and a separate Terraform backend.
+
+### 2026-05-16 — M43: DAB mutators for env naming
+
+**What I observed**
+`mutators:` under `bundle:` in `databricks.yml` is an unknown field — the correct
+top-level key is `python:`, with `mutators:` nested inside it. Function references use
+fully-qualified Python paths (`mutators.set_run_context:set_pipeline_context`), not file
+paths. This is the `databricks-bundles` package API, not a stdin/stdout script interface.
+
+`databricks-bundles` is not installed by default. Adding it to `pyproject.toml`
+dev dependencies and running `uv sync` installed `databricks-bundles==0.299.2`. The
+package provides typed decorator-based mutators: `@pipeline_mutator` and `@job_mutator`.
+Each decorated function receives `(bundle: Bundle, pipeline: Pipeline) -> Pipeline`
+and must return a new instance via `dataclasses.replace()` — it does not mutate in place.
+Variable values are accessed via `bundle.resolve_variable(bundle.variables.get(...))`.
+
+The first attempt added `deployment_suffix` prefix to resource names in the mutator
+(replacing the `${var.deployment_suffix}_` YAML pattern). This produced double-prefixed
+names in the Databricks UI: `dev_[dev sigurd_lislegaard] medallion_pipeline`. The cause:
+DAB's `mode: development` transforms resource names before the mutator runs, prepending
+`[dev username]`. The mutator then sees `[dev sigurd_lislegaard] medallion_pipeline` as
+the pipeline name and prepends `dev_`, giving `dev_[dev sigurd_lislegaard] medallion_pipeline`.
+
+Reverting names to YAML variable substitution and scoping the mutator to `deployed_at`
+tag only resolved the issue. The `deployed_at` UTC timestamp tag appeared on all deployed
+pipelines and jobs in the Databricks UI alongside the existing `presets.tags` entries.
+
+**What I learned**
+DAB Python mutators receive resources AFTER `mode: development` name transformation has
+been applied. Any naming logic in a mutator interacts with — and compounds — the dev-mode
+prefix. Naming that already works via YAML variable substitution should stay in YAML.
+
+The mutator's unique contribution is for properties that are only knowable at deploy time
+and cannot be expressed as a static string or variable reference. `datetime.now()` is the
+canonical example. DAB has no `now()` equivalent in YAML — a mutator is the only way to
+attach a deploy timestamp to a resource.
+
+`@pipeline_mutator` and `@job_mutator` are typed decorators that register the function
+as a `ResourceMutator`. The CLI imports the module at deploy time and invokes each
+registered mutator for every resource of the matching type. Multiple mutators can be
+listed under `python.mutators:` and are applied in order.
+
+**Practical conclusion**
+Use a DAB Python mutator only for properties that YAML and variable substitution cannot
+express: timestamps, values derived from external state, conditional logic. Do not
+replicate naming patterns that YAML already handles cleanly — the mutator runs after dev
+mode has transformed names, and the interaction is not obvious from reading the config.
+
+Before writing a mutator, run `databricks bundle schema | grep -A5 '"python"'` to verify
+the key structure for the current CLI version. The key was `python.mutators` not
+`bundle.mutators` in CLI 0.298.0 — this is easy to get wrong without checking the schema.
+
+**Current position**
+`mutators/set_run_context.py` adds a `deployed_at` UTC timestamp tag to all pipelines
+and jobs at deploy time. `databricks-bundles==0.299.2` declared in `pyproject.toml` dev
+dependencies. `python.mutators` configured in `databricks.yml`. Resource names are
+unchanged — YAML variable substitution (`${var.deployment_suffix}_`) handles naming
+as before.
+
+**Remaining gaps**
+`deployed_at` tag is set at bundle deploy time, not at pipeline run time. A long-running
+dev pipeline deployed once and run many times will show the deploy timestamp, not the
+last run timestamp. For run-level timestamps, use the event log or job run metadata.
