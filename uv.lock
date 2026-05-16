@@ -204,12 +204,22 @@ wheels = [
 ]
 
 [[package]]
+name = "databricks-bundles"
+version = "0.299.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/e7/4a68f266fd251f85a0ef63e5b917738a1fe9c8b1ae7891ef2078e5d3103b/databricks_bundles-0.299.2.tar.gz", hash = "sha256:67dbf1bc3f1481bd00b3415041ae3e6b1fb24a29d7e94d127257cf36fb646581", size = 98632, upload-time = "2026-05-13T14:29:50.266Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/11/b5/b60017ad26023efdb678e6cc4efebba7b733b6cabc3041e7c1bea004167a/databricks_bundles-0.299.2-py3-none-any.whl", hash = "sha256:9410f24d3863b5fe92af5842b7fc3e52b6baa21eae3e0875f33b3f003a5cdf88", size = 203996, upload-time = "2026-05-13T14:29:48.509Z" },
+]
+
+[[package]]
 name = "databricks-dataops-lakeflow-reference"
 version = "0.1.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "databricks-bundles" },
     { name = "databricks-sdk" },
     { name = "pyspark" },
     { name = "pytest" },
@@ -222,6 +232,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "databricks-bundles", specifier = ">=0.5.0" },
     { name = "databricks-sdk", specifier = ">=0.108.0" },
     { name = "pyspark", specifier = ">=4.1.1" },
     { name = "pytest", specifier = ">=9.0.3" },
