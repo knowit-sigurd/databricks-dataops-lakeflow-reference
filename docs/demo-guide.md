@@ -82,13 +82,13 @@ Same code runs in dev and prod. The variable is set in `databricks.yml` per targ
 
 **What to say:**
 
-Show the `targets` block. Two targets: `dev` and `prod`. The variables `target_schema`, `source_path`, and `quality_mode` are all scoped per target. The pipeline code is identical — only the runtime configuration differs.
+Show the `targets` block. Three targets: `dev`, `prod`, and `platform`. The variables `target_schema`, `source_path`, and `quality_mode` are all scoped per target. The pipeline code is identical — only the runtime configuration differs.
 
 Show the `root_path` under each target. This is DAB state isolation — each PR deployment writes bundle state to a separate path under `~/.bundle/dataops-lab-sdp/dev/pr_<n>/`. Without this, closing any PR would destroy whichever pipeline was last deployed, not the one that PR owned. Verified: two concurrent PRs (pr_66, pr_67) ran simultaneously with fully isolated bundle state, schemas, and pipelines.
 
-Show the `permissions` block under the prod pipeline resource. Workspace-level ACL is declared in the bundle config, not set manually in the UI. What is in the repo is what is deployed.
+Show the `platform` target. It declares the shared UC schemas (`sdp_dev`, `sdp_prod`) as DAB-managed resources with `lifecycle.prevent_destroy: true`. This is the governance boundary: the platform team owns the `platform` target; the data engineering team owns `dev` and `prod`. `bundle destroy -t dev` (run on every PR close) cannot touch these schemas — they are not in the dev target's Terraform state.
 
-Show `bundle.git.branch: main`. Informational annotation — it surfaces in `bundle validate` output. The enforcement is in `deploy.yml`: the prod deploy job only runs on push to `main`.
+Show `git: branch: main` under the `prod` target. Informational annotation — it surfaces in `bundle validate` output. The enforcement is in `deploy.yml`: the prod deploy job only runs on push to `main`.
 
 **Expected questions:**
 

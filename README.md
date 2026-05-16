@@ -19,17 +19,19 @@ For first-time workspace setup, see [docs/platform-prerequisites.md](docs/platfo
 ## Project structure
 
 ```
-pipelines/          # SDP pipeline definitions (customer, orders, gold) + logic modules
+pipelines/          # SDP pipeline definitions (customer, orders, gold, CDC, Auto Loader) + logic modules
+mutators/           # DAB Python mutators (set_run_context.py — adds deployed_at tag at deploy time)
 tests/              # Transformation unit tests (pytest)
 scripts/            # Utilities (upload_data.sh, stop_pipeline.py, validate_counts.py, assert_job_output.py, cleanup_orphaned_pipeline.py)
+contracts/          # Data contracts (customer_order_summary.yml — verified by operational job)
 fixtures/           # Expected row counts for CI assertions (expected_counts.json)
 sql/                # Observability queries (event log, rejection tables)
 data/               # Dev fixture CSVs (intentionally bad rows for rejection demo)
 data/prod/          # Prod fixture CSVs (clean — all rows pass validation)
 docs/               # Architecture, learning log, demo guides
-.github/workflows/  # CI and deploy workflows (ci.yml, deploy.yml, cleanup-pr.yml)
+.github/workflows/  # CI and deploy workflows (ci.yml, deploy.yml, cleanup-pr.yml, cleanup-stale.yml, failure-demo.yml)
 .github/            # Dependabot config (weekly pip + actions updates) + PR template
-databricks.yml      # Bundle config (targets: dev, prod)
+databricks.yml      # Bundle config (targets: dev, prod, platform)
 Makefile            # Dev lifecycle commands (lint, test, deploy, run, assert, clean)
 ```
 
