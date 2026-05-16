@@ -58,6 +58,23 @@ targets:
           # run_as:
           #   service_principal_name: dataops-lab-sp
 
+  platform:
+    workspace:
+      host: https://dbc-639f4875-165d.cloud.databricks.com
+      root_path: ~/.bundle/${bundle.name}/platform
+    resources:
+      schemas:
+        sdp_dev:
+          name: sdp_dev
+          catalog_name: dataops_lab
+          lifecycle:
+            prevent_destroy: true
+        sdp_prod:
+          name: sdp_prod
+          catalog_name: dataops_lab
+          lifecycle:
+            prevent_destroy: true
+
 
 resources:
   pipelines:

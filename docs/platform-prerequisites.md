@@ -14,6 +14,13 @@ In the Databricks workspace admin console (`Settings → Identity and Access →
 
 ## 2. Configure Unity Catalog
 
+`sdp_dev` and `sdp_prod` schemas are declared as DAB-managed resources in the `platform`
+target of `databricks.yml` with `lifecycle.prevent_destroy: true`. After the catalog and
+schemas are created below, run `databricks bundle deploy -t platform` once to bring them
+under bundle management. This protects both schemas from accidental destruction — even a
+manual `bundle destroy -t platform` will fail safely. The catalog and volumes must still
+be created manually; DAB does not manage them.
+
 Run the following SQL in a SQL warehouse. Replace `<sp-application-id>` with the SP's Client ID from step 1.
 
 ```sql

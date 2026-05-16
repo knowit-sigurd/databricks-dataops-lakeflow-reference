@@ -2858,3 +2858,69 @@ Auto Loader checkpoint state is stored in `autoloader_schema_location`. A full p
 refresh resets it — documented but not automated. No CI assertions on autoloader tables
 by design. CDC source (Debezium, Kafka) not demonstrated — fixture CSV is the stand-in
 for a real streaming source.
+
+### 2026-05-16 — M42: Platform DAB target
+
+**What I observed**
+`databricks.yml` supports `schemas` under a target-level `resources:` block with
+`lifecycle.prevent_destroy: true` in CLI >= 0.298.0. `bundle validate -t platform`
+passed. The schemas did not appear in `bundle validate -t dev` or `bundle validate
+-t prod` — confirming they are in platform's Terraform state only.
+
+`bundle deploy -t platform` failed on the first attempt: "cannot create schema:
+Schema already exists." DAB tries to create resources not yet in its Terraform state,
+even if they already exist in the workspace. `databricks bundle terraform` is not a
+subcommand in CLI 0.298.0 — no Terraform passthrough is available.
+
+`databricks bundle deployment bind -t platform sdp_dev dataops_lab.sdp_dev` is the
+correct import mechanism. It showed two planned changes: `force_destroy: false → true`
+(DAB sets this automatically on all managed schemas) and removal of `collation` and
+`owner` from tracked properties (set during manual creation, not managed by DAB going
+forward). Both changes are safe — `lifecycle.prevent_destroy` is independent of
+`force_destroy` and the actual schema properties in the workspace are unchanged.
+
+After binding both schemas, `bundle deploy -t platform` completed with "Deployment
+complete!" `bundle destroy -t platform` exited non-zero with a `prevent_destroy` error
+for both `sdp_dev` and `sdp_prod`. Terraform aborted the plan entirely — no resources
+were destroyed.
+
+**What I learned**
+DAB's brownfield adoption path for existing UC resources is `databricks bundle
+deployment bind`, not a Terraform import passthrough. The bind command imports the
+resource into the target's Terraform state and shows an explicit plan before
+committing — same pattern as binding jobs or pipelines.
+
+`force_destroy` and `lifecycle.prevent_destroy` are independent mechanisms.
+`force_destroy = true` tells Databricks to allow dropping the schema even if it
+contains tables — a Databricks-side permission. `lifecycle.prevent_destroy = true`
+tells Terraform to refuse to plan the deletion at all — a Terraform-side gate. DAB
+sets `force_destroy = true` automatically on all managed schemas; `prevent_destroy`
+is what actually protects them.
+
+Terraform state is per-target. Schemas bound and deployed under the `platform` target
+are invisible to `bundle destroy -t dev`. `cleanup-pr.yml`'s destroy step cannot
+touch them.
+
+**Practical conclusion**
+For greenfield workspaces, run `bundle deploy -t platform` when schemas are first
+created — DAB creates them directly. For brownfield workspaces (schemas already
+exist), run `databricks bundle deployment bind -t platform <key> <catalog>.<schema>`
+for each schema before the first deploy. The bind is a one-time operation per schema
+per workspace.
+
+Declare shared, long-lived UC schemas in a dedicated `platform` target with
+`lifecycle.prevent_destroy: true` from day one. Never declare them in the `dev`
+target — `bundle destroy -t dev` (run on every PR close) will abort entirely if the
+schema is in its Terraform state, even with `prevent_destroy` set.
+
+**Current position**
+`sdp_dev` and `sdp_prod` are DAB-managed schema resources under the `platform` target
+with `lifecycle.prevent_destroy: true`. `bundle destroy -t platform` cannot delete
+them. `bundle destroy -t dev` has no knowledge of them. `databricks.yml` has three
+targets: `dev`, `prod`, `platform`.
+
+**Remaining gaps**
+UC volumes (`sdp_dev/raw`, `sdp_prod/raw`) remain manually provisioned — the same
+`deployment bind` pattern applies if they are added to the platform target later.
+In a production multi-team setup, platform resources belong in a separate bundle with
+independent CI permissions and a separate Terraform backend.
